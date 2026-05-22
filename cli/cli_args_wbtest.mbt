@@ -36,12 +36,17 @@ test "cli args: bare commands render command help" {
   @debug.debug_inspect(
     [
       parse_mcpx_args(["call"]),
-      parse_mcpx_args(["grep"]),
+      parse_mcpx_args(["search"]),
       parse_mcpx_args(["auth"]),
       parse_mcpx_args(["daemon"]),
     ],
     content=(
-      #|[Ok(CallHelp), Ok(GrepHelp), Ok(AuthHelp), Ok(Daemon({ mode: Help }))]
+      #|[
+      #|  Ok(CallHelp),
+      #|  Ok(SearchHelp),
+      #|  Ok(AuthHelp),
+      #|  Ok(Daemon({ mode: Help })),
+      #|]
     ),
   )
 }
@@ -154,11 +159,11 @@ test "cli args: info can target a remote URL directly" {
 }
 
 ///|
-test "cli args: grep searches configured tools" {
+test "cli args: search searches configured servers" {
   @debug.debug_inspect(
-    parse_mcpx_args(["grep", "issue"]),
+    parse_mcpx_args(["search", "issue"]),
     content=(
-      #|Ok(Grep({ pattern: "issue" }))
+      #|Ok(Search({ pattern: "issue" }))
     ),
   )
 }

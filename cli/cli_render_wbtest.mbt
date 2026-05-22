@@ -8,7 +8,7 @@ test "cli render: help text is human-readable" {
         help.contains("mcpx info <server|mcp-url> <tool>"),
         content="true",
       )
-      inspect(help.contains("mcpx grep <pattern>"), content="true")
+      inspect(help.contains("mcpx search <pattern>"), content="true")
     }
     Err(error) => @debug.debug_inspect(error, content="UNREACHABLE")
   }
@@ -25,7 +25,7 @@ test "cli render: version text" {
 ///|
 test "cli render: command-specific help text" {
   let call = parse_mcpx_args(["call"]).unwrap()
-  let grep = parse_mcpx_args(["grep"]).unwrap()
+  let search = parse_mcpx_args(["search"]).unwrap()
   let auth = parse_mcpx_args(["auth"]).unwrap()
   let daemon = parse_mcpx_args(["daemon"]).unwrap()
   inspect(
@@ -43,12 +43,12 @@ test "cli render: command-specific help text" {
     ),
   )
   inspect(
-    render_mcpx_command(grep),
+    render_mcpx_command(search),
     content=(
-      #|mcpx grep
+      #|mcpx search
       #|
       #|Usage:
-      #|  mcpx grep <pattern>
+      #|  mcpx search <pattern>
     ),
   )
   inspect(
@@ -146,12 +146,12 @@ test "cli render: direct URL info includes URL" {
 }
 
 ///|
-test "cli render: grep command is JSON plan for native runner" {
-  match parse_mcpx_args(["grep", "search"]) {
+test "cli render: search command is JSON plan for native runner" {
+  match parse_mcpx_args(["search", "search"]) {
     Ok(command) =>
       inspect(
         render_mcpx_command(command),
-        content="{\"action\":\"grep\",\"pattern\":\"search\"}",
+        content="{\"action\":\"search\",\"pattern\":\"search\"}",
       )
     Err(error) => @debug.debug_inspect(error, content="UNREACHABLE")
   }

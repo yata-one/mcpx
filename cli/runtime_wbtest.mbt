@@ -24,8 +24,8 @@ test "mcpx runtime: bare commands return command-specific help" {
     content="true",
   )
   inspect(
-    run_mcpx_args(["grep"], home="/tmp/mcpx-runtime-test/home").contains(
-      "mcpx grep <pattern>",
+    run_mcpx_args(["search"], home="/tmp/mcpx-runtime-test/home").contains(
+      "mcpx search <pattern>",
     ),
     content="true",
   )

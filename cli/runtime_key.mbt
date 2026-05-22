@@ -1,12 +1,4 @@
 ///|
-fn tool_cache_key(
-  server_name : String,
-  server : @config.McpServerConfig,
-) -> String {
-  server_public_identity_key(server_name, server)
-}
-
-///|
 fn daemon_pool_key(
   server_name : String,
   server : @config.McpServerConfig,

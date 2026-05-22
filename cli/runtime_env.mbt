@@ -27,9 +27,6 @@ fn current_time_seconds() -> Int {
 }
 
 ///|
-fn current_time_millis() -> UInt64 {
-  @env.now()
-}
 
 ///|
 fn load_mcpx_env(path : String) -> Result[Map[String, String], String] {

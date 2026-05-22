@@ -5,8 +5,8 @@ pub(all) enum McpxCommand {
   CallHelp
   Call(CallCommand)
   Info(InfoCommand)
-  GrepHelp
-  Grep(GrepCommand)
+  SearchHelp
+  Search(SearchCommand)
   AuthHelp
   Auth(AuthCommand)
   Daemon(DaemonCommand)
@@ -28,7 +28,7 @@ pub struct InfoCommand {
 } derive(Debug)
 
 ///|
-pub struct GrepCommand {
+pub struct SearchCommand {
   pattern : String
 } derive(Debug)
 
@@ -81,7 +81,7 @@ pub fn parse_mcpx_args(
       }
     Some("call") => parse_call_command(args)
     Some("info") => parse_info_command(args)
-    Some("grep") => parse_grep_command(args)
+    Some("search") => parse_search_command(args)
     Some("auth") => parse_auth_command(args)
     Some("daemon") => parse_daemon_command(args)
     Some(command) => Err(CliParseError::UnknownCommand(command))
@@ -126,16 +126,16 @@ fn parse_info_command(
 }
 
 ///|
-fn parse_grep_command(
+fn parse_search_command(
   args : Array[String],
 ) -> Result[McpxCommand, CliParseError] {
   match args.get(1) {
-    None => Ok(McpxCommand::GrepHelp)
+    None => Ok(McpxCommand::SearchHelp)
     Some(pattern) =>
       if args.length() > 2 {
         Err(CliParseError::UnknownOption(args[2]))
       } else {
-        Ok(McpxCommand::Grep({ pattern, }))
+        Ok(McpxCommand::Search({ pattern, }))
       }
   }
 }

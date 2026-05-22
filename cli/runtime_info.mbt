@@ -353,15 +353,3 @@ fn schema_description_text(schema : Json) -> String? {
     _ => None
   }
 }
-
-///|
-fn tool_info_json(tool : @mcp_client.McpToolInfo) -> Json {
-  let obj = Map([])
-  obj["name"] = Json::string(tool.name)
-  match tool.description {
-    Some(value) => obj["description"] = Json::string(value)
-    None => ()
-  }
-  obj["inputSchema"] = tool.input_schema
-  Json::object(obj)
-}

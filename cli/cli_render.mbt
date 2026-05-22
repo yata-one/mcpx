@@ -6,8 +6,8 @@ pub fn render_mcpx_command(command : McpxCommand) -> String {
     CallHelp => call_help_text()
     Call(command) => render_call_command(command)
     Info(command) => render_info_command(command)
-    GrepHelp => grep_help_text()
-    Grep(command) => render_grep_command(command)
+    SearchHelp => search_help_text()
+    Search(command) => render_search_command(command)
     AuthHelp => auth_help_text()
     Auth(command) => render_auth_command(command)
     Daemon(command) => render_daemon_command(command)
@@ -27,7 +27,7 @@ pub fn mcpx_help_text() -> String {
     #|  mcpx info
     #|  mcpx info <server|mcp-url>
     #|  mcpx info <server|mcp-url> <tool>
-    #|  mcpx grep <pattern>
+    #|  mcpx search <pattern>
     #|  mcpx call <server|mcp-url> <tool> [arguments-json]
     #|
     #|  mcpx auth <server>
@@ -55,12 +55,12 @@ pub fn call_help_text() -> String {
 }
 
 ///|
-pub fn grep_help_text() -> String {
+pub fn search_help_text() -> String {
   (
-    #|mcpx grep
+    #|mcpx search
     #|
     #|Usage:
-    #|  mcpx grep <pattern>
+    #|  mcpx search <pattern>
   )
 }
 
@@ -124,9 +124,9 @@ fn render_info_command(command : InfoCommand) -> String {
 }
 
 ///|
-fn render_grep_command(command : GrepCommand) -> String {
+fn render_search_command(command : SearchCommand) -> String {
   let obj = Map([])
-  obj["action"] = Json::string("grep")
+  obj["action"] = Json::string("search")
   obj["pattern"] = Json::string(command.pattern)
   Json::object(obj).stringify()
 }

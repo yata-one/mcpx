@@ -11,7 +11,6 @@ test "mcpx app paths: default files under ~/.config/mcpx" {
     paths.credentials_file,
     content="/Users/alice/.config/mcpx/credentials.json",
   )
-  inspect(paths.cache_file, content="/Users/alice/.config/mcpx/cache.json")
 }
 
 ///|
@@ -27,7 +26,6 @@ test "mcpx app paths: explicit config home wins over home" {
     paths.credentials_file,
     content="/tmp/xdg-config/mcpx/credentials.json",
   )
-  inspect(paths.cache_file, content="/tmp/xdg-config/mcpx/cache.json")
 }
 
 ///|

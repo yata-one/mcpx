@@ -25,7 +25,7 @@ mcpx --version
 mcpx info
 mcpx info <server|mcp-url>
 mcpx info <server|mcp-url> <tool>
-mcpx grep <pattern>
+mcpx search <pattern>
 mcpx call <server|mcp-url> <tool> [arguments-json]
 
 mcpx auth <server>
@@ -47,7 +47,7 @@ Configured server:
 
 ```sh
 mcpx info github
-mcpx grep search
+mcpx search search
 mcpx call github search '{"q":"moonbit"}'
 ```
 
@@ -66,7 +66,7 @@ The full shape is easiest to understand as one JSONC example:
 ```jsonc
 {
   "mcpServers": {
-    // Required: server name used by `mcpx info/call/grep`.
+    // Required: server name used by `mcpx info/call/search`.
     "github": {
       // Required: "http" for remote MCP endpoints.
       "transport": "http",
@@ -126,11 +126,11 @@ Only `${VAR}` interpolation is supported; fallback syntax such as
 
 Interpolation applies to HTTP, OAuth static client fields, and stdio launch fields.
 
-### Grep cache
+### Search
 
-`mcpx grep <pattern>` searches configured server/tool metadata and caches tool
-indexes briefly in `~/.config/mcpx/cache.json`. Cache keys do not include raw
-secrets.
+`mcpx search <pattern>` searches configured server names and descriptions.
+No server connections are needed — it reads config only. Results show the
+top 5 matches ranked by relevance (exact > prefix > contains).
 
 ### Keep-alive daemon
 

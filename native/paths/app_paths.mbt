@@ -4,7 +4,6 @@ pub struct McpxAppPaths {
   servers_config : String
   env_file : String
   credentials_file : String
-  cache_file : String
 }
 
 ///|
@@ -27,7 +26,6 @@ pub fn mcpx_app_paths(
     ),
     env_file: join_path(config_dir, ".env"),
     credentials_file: join_path(config_dir, "credentials.json"),
-    cache_file: join_path(config_dir, "cache.json"),
   }
 }
 

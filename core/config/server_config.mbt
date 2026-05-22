@@ -17,6 +17,7 @@ pub struct McpServerConfig {
   lifecycle : ServerLifecycle?
   allowed_tools : Array[String]
   disabled_tools : Array[String]
+  description : String?
 } derive(Debug)
 
 ///|
@@ -70,6 +71,7 @@ pub fn mcp_server_config(
   lifecycle? : ServerLifecycle? = None,
   allowed_tools? : Array[String] = [],
   disabled_tools? : Array[String] = [],
+  description? : String? = None,
 ) -> McpServerConfig {
   {
     name,
@@ -84,6 +86,7 @@ pub fn mcp_server_config(
     lifecycle,
     allowed_tools,
     disabled_tools,
+    description,
   }
 }
 
@@ -176,6 +179,7 @@ pub fn resolve_server_env(
     lifecycle,
     allowed_tools: server.allowed_tools,
     disabled_tools: server.disabled_tools,
+    description: server.description,
   })
 }
 
@@ -467,6 +471,7 @@ fn decode_server_config(
       obj.get("disabledTools"),
       "disabledTools",
     ),
+    description: optional_string(obj.get("description"), "description"),
   }
 }
 
@@ -732,6 +737,10 @@ pub impl ToJson for McpServerConfig with to_json(self) {
   }
   match self.lifecycle {
     Some(lifecycle) => obj["lifecycle"] = lifecycle.to_json()
+    None => ()
+  }
+  match self.description {
+    Some(description) => obj["description"] = Json::string(description)
     None => ()
   }
   Json::object(obj)

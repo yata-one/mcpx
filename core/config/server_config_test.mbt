@@ -30,6 +30,7 @@ test "server config: decodes remote OAuth server shape" {
       #|      lifecycle: None,
       #|      allowed_tools: [],
       #|      disabled_tools: [],
+      #|      description: None,
       #|    },
       #|  },
       #|}
@@ -82,6 +83,7 @@ test "server config: resolves env templates in url headers and static OAuth clie
       #|    lifecycle: None,
       #|    allowed_tools: [],
       #|    disabled_tools: [],
+      #|    description: None,
       #|  },
       #|)
     ),
@@ -117,6 +119,7 @@ test "server config: decodes stdio env/cwd and resolves templates" {
       #|    lifecycle: None,
       #|    allowed_tools: [],
       #|    disabled_tools: [],
+      #|    description: None,
       #|  },
       #|)
     ),
@@ -154,6 +157,50 @@ test "server config: decodes tool filters and applies disabled priority" {
   inspect(is_tool_allowed(server, "search_private"), content="false")
   inspect(is_tool_allowed(server, "delete_file"), content="false")
   inspect(is_tool_allowed(server, "write_file"), content="false")
+}
+
+///|
+test "server config: decodes description field" {
+  let text =
+    #|{"mcpServers":{"github":{"transport":"http","url":"https://mcp.github.com/mcp","description":"GitHub Issues, PRs, and code search"}}}
+  let config = decode_mcpx_config(@json.parse(text))
+  let server = config.servers.get("github").unwrap()
+  @debug.debug_inspect(
+    server.description,
+    content=(
+      #|Some("GitHub Issues, PRs, and code search")
+    ),
+  )
+}
+
+///|
+test "server config: missing description is None" {
+  let text =
+    #|{"mcpServers":{"github":{"transport":"http","url":"https://mcp.github.com/mcp"}}}
+  let config = decode_mcpx_config(@json.parse(text))
+  let server = config.servers.get("github").unwrap()
+  @debug.debug_inspect(
+    server.description,
+    content=(
+      #|None
+    ),
+  )
+}
+
+///|
+test "server config: mcp_server_config forwards description" {
+  let server = mcp_server_config(
+    name="github",
+    transport=ServerTransport::Http,
+    url=Some("https://mcp.github.com/mcp"),
+    description=Some("GitHub Issues and PRs"),
+  )
+  @debug.debug_inspect(
+    server.description,
+    content=(
+      #|Some("GitHub Issues and PRs")
+    ),
+  )
 }
 
 ///|
@@ -212,6 +259,7 @@ test "server config: auto keep-alive for known stdio commands unless dynamic chr
       #|    lifecycle: Some({ mode: KeepAlive, idle_timeout_ms: None }),
       #|    allowed_tools: [],
       #|    disabled_tools: [],
+      #|    description: None,
       #|  },
       #|)
     ),
@@ -235,6 +283,7 @@ test "server config: auto keep-alive for known stdio commands unless dynamic chr
       #|    lifecycle: Some({ mode: Ephemeral, idle_timeout_ms: None }),
       #|    allowed_tools: [],
       #|    disabled_tools: [],
+      #|    description: None,
       #|  },
       #|)
     ),
@@ -266,6 +315,7 @@ test "server config: keep-alive env overrides by server or canonical name" {
       #|    lifecycle: None,
       #|    allowed_tools: [],
       #|    disabled_tools: [],
+      #|    description: None,
       #|  },
       #|)
     ),
