@@ -2,10 +2,7 @@
 test "mcpx app paths: default files under ~/.config/mcpx" {
   let paths = mcpx_app_paths("/Users/alice")
   inspect(paths.config_dir, content="/Users/alice/.config/mcpx")
-  inspect(
-    paths.servers_config,
-    content="/Users/alice/.config/mcpx/mcpServers.jsonc",
-  )
+  inspect(paths.servers_config, content="/Users/alice/.config/mcpx/mcp.jsonc")
   inspect(paths.env_file, content="/Users/alice/.config/mcpx/.env")
   inspect(
     paths.credentials_file,
@@ -20,7 +17,7 @@ test "mcpx app paths: explicit config home wins over home" {
     config_home=Some("/tmp/xdg-config"),
   )
   inspect(paths.config_dir, content="/tmp/xdg-config/mcpx")
-  inspect(paths.servers_config, content="/tmp/xdg-config/mcpx/mcpServers.jsonc")
+  inspect(paths.servers_config, content="/tmp/xdg-config/mcpx/mcp.jsonc")
   inspect(paths.env_file, content="/tmp/xdg-config/mcpx/.env")
   inspect(
     paths.credentials_file,
@@ -38,16 +35,16 @@ test "mcpx app paths: servers config resolves json when jsonc is absent" {
   @fs.create_dir(config_dir) catch {
     _ => ()
   }
-  @fs.remove_file(config_dir + "/mcpServers.jsonc") catch {
+  @fs.remove_file(config_dir + "/mcp.jsonc") catch {
     _ => ()
   }
-  @fs.remove_file(config_dir + "/mcpServers.json") catch {
+  @fs.remove_file(config_dir + "/mcp.json") catch {
     _ => ()
   }
-  @fs.write_string_to_file(config_dir + "/mcpServers.json", "{}")
+  @fs.write_string_to_file(config_dir + "/mcp.json", "{}")
   inspect(
     mcpx_app_paths("/Users/alice", config_home=Some(config_home)).servers_config,
-    content="/tmp/mcpx-app-paths-json-config/mcpx/mcpServers.json",
+    content="/tmp/mcpx-app-paths-json-config/mcpx/mcp.json",
   )
 }
 
@@ -61,17 +58,17 @@ test "mcpx app paths: servers config prefers jsonc over json" {
   @fs.create_dir(config_dir) catch {
     _ => ()
   }
-  @fs.remove_file(config_dir + "/mcpServers.jsonc") catch {
+  @fs.remove_file(config_dir + "/mcp.jsonc") catch {
     _ => ()
   }
-  @fs.remove_file(config_dir + "/mcpServers.json") catch {
+  @fs.remove_file(config_dir + "/mcp.json") catch {
     _ => ()
   }
-  @fs.write_string_to_file(config_dir + "/mcpServers.jsonc", "{}")
-  @fs.write_string_to_file(config_dir + "/mcpServers.json", "{}")
+  @fs.write_string_to_file(config_dir + "/mcp.jsonc", "{}")
+  @fs.write_string_to_file(config_dir + "/mcp.json", "{}")
   inspect(
     mcpx_app_paths("/Users/alice", config_home=Some(config_home)).servers_config,
-    content="/tmp/mcpx-app-paths-jsonc-config/mcpx/mcpServers.jsonc",
+    content="/tmp/mcpx-app-paths-jsonc-config/mcpx/mcp.jsonc",
   )
 }
 

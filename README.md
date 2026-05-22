@@ -57,14 +57,15 @@ remains JSON for copy/paste and automation handoff.
 
 ## Config
 
-`mcpx` reads user config from `~/.config/mcpx/mcpServers.jsonc`.
-`~/.config/mcpx/mcpServers.json` is also supported when the JSONC file is not
-present, but `mcpServers.jsonc` wins when both exist.
+`mcpx` reads user config from `~/.config/mcpx/mcp.jsonc`.
+`~/.config/mcpx/mcp.json` is also supported when the JSONC file is not
+present, but `mcp.jsonc` wins when both exist.
 
-The full shape is easiest to understand as one JSONC example:
+Add `"$schema"` for editor autocompletion and validation:
 
 ```jsonc
 {
+  "$schema": "https://raw.githubusercontent.com/yata-one/mcpx/main/schema.json",
   "mcpServers": {
     // Required: server name used by `mcpx info/call/search`.
     "github": {

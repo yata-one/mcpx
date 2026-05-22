@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/yata-one/mcpx/main/schema.json",
+  "title": "mcpx config",
+  "description": "Configuration for mcpx — Lightweight CLI / JS Runtime for the Model Context Protocol.",
+  "type": "object",
+  "required": ["mcpServers"],
+  "additionalProperties": false,
+  "properties": {
+    "mcpServers": {
+      "type": "object",
+      "description": "MCP server definitions keyed by server name.",
+      "additionalProperties": {
+        "$ref": "#/$defs/server"
+      }
+    }
+  },
+  "$defs": {
+    "server": {
+      "type": "object",
+      "required": ["transport"],
+      "properties": {
+        "transport": {
+          "type": "string",
+          "enum": ["http", "stdio"],
+          "description": "Server transport type. 'http' for remote MCP endpoints, 'stdio' for local child-process servers."
+        },
+        "url": {
+          "type": "string",
+          "description": "MCP endpoint URL. Required for http transport. Supports ${VAR} interpolation."
+        },
+        "command": {
+          "type": "string",
+          "description": "Executable to run. Required for stdio transport. Supports ${VAR} interpolation."
+        },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Arguments passed to the stdio command. Supports ${VAR} interpolation."
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Environment variables for stdio process. Supports ${VAR} interpolation."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Working directory for stdio process. Supports ${VAR} interpolation."
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Extra HTTP headers for http transport. Supports ${VAR} interpolation."
+        },
+        "auth": {
+          "$ref": "#/$defs/auth"
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/lifecycle"
+        },
+        "allowedTools": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tool allowlist. Glob patterns (* and ?). Only matching tools are visible/callable."
+        },
+        "disabledTools": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tool denylist applied after allowedTools. Glob patterns (* and ?). Wins conflicts."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable server description. Shown by 'mcpx search'."
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "description": "OAuth authentication config used by 'mcpx auth <server>'.",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["oauth"],
+          "description": "Authentication type."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "OAuth client ID. Supports ${VAR} interpolation."
+        },
+        "clientSecret": {
+          "type": "string",
+          "description": "OAuth client secret. Supports ${VAR} interpolation."
+        },
+        "metadataUrl": {
+          "type": "string",
+          "description": "OAuth authorization server metadata URL."
+        },
+        "scopes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "OAuth scopes to request."
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "description": "Server lifecycle management for stdio transport.",
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["keep-alive", "ephemeral"],
+          "description": "'keep-alive' keeps the process running between calls. 'ephemeral' starts a fresh process each call."
+        },
+        "idleTimeoutMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Idle timeout in milliseconds before shutting down a keep-alive process."
+        }
+      }
+    }
+  }
+}

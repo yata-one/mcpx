@@ -1,6 +1,6 @@
 ///|
 test "config store: missing file loads empty config" {
-  let path = "/tmp/mcpx-config-store-test/missing/mcpServers.jsonc"
+  let path = "/tmp/mcpx-config-store-test/missing/mcp.jsonc"
   @fs.remove_file(path) catch {
     _ => ()
   }
@@ -12,8 +12,8 @@ test "config store: missing file loads empty config" {
 
 ///|
 test "config store: loader only reads the provided path" {
-  let jsonc_path = "/tmp/mcpx-config-store-test/no-derived-path/mcpServers.jsonc"
-  let json_path = "/tmp/mcpx-config-store-test/no-derived-path/mcpServers.json"
+  let jsonc_path = "/tmp/mcpx-config-store-test/no-derived-path/mcp.jsonc"
+  let json_path = "/tmp/mcpx-config-store-test/no-derived-path/mcp.json"
   @fs.remove_file(jsonc_path) catch {
     _ => ()
   }
@@ -47,7 +47,7 @@ test "config store: loader only reads the provided path" {
 
 ///|
 test "config store: save writes private config file and loads roundtrip" {
-  let path = "/tmp/mcpx-config-store-test/nested/mcpServers.jsonc"
+  let path = "/tmp/mcpx-config-store-test/nested/mcp.jsonc"
   @fs.remove_file(path) catch {
     _ => ()
   }
@@ -68,7 +68,7 @@ test "config store: save writes private config file and loads roundtrip" {
 
 ///|
 test "config store: load jsonc and save merged config" {
-  let path = "/tmp/mcpx-config-store-test/merge/mcpServers.jsonc"
+  let path = "/tmp/mcpx-config-store-test/merge/mcp.jsonc"
   let existing =
     #|{
     #|  // existing user config

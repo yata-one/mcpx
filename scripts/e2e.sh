@@ -174,10 +174,10 @@ echo "[http] direct URL call"
 out="$($mcpx call "$url" echo '{"text":"hi"}')"
 assert_echo_call "$out" "hi"
 
-echo "[config] configured HTTP via ~/.config/mcpx/mcpServers.jsonc"
+echo "[config] configured HTTP via ~/.config/mcpx/mcp.jsonc"
 config_home="$tmp/config"
 mkdir -p "$config_home/mcpx"
-cat >"$config_home/mcpx/mcpServers.jsonc" <<EOF_CFG
+cat >"$config_home/mcpx/mcp.jsonc" <<EOF_CFG
 {
   // JSONC + trailing comma
   "mcpServers": {
@@ -228,7 +228,7 @@ for line in sys.stdin:
             "result": {"content":[{"type":"text","text":args.get("text", "")}]},
         })
 PY
-cat >"$config_home/mcpx/mcpServers.jsonc" <<EOF_CFG
+cat >"$config_home/mcpx/mcp.jsonc" <<EOF_CFG
 {
   "mcpServers": {
     "stdio": {
@@ -245,7 +245,7 @@ out="$(HOME="$tmp/home" XDG_CONFIG_HOME="$config_home" "$mcpx" call stdio echo '
 assert_echo_call "$out" "stdio"
 
 echo "[daemon] keep-alive stdio call closes captured pipes"
-cat >"$config_home/mcpx/mcpServers.jsonc" <<EOF_CFG
+cat >"$config_home/mcpx/mcp.jsonc" <<EOF_CFG
 {
   "mcpServers": {
     "stdio": {

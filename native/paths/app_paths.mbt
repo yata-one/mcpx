@@ -16,8 +16,8 @@ pub fn mcpx_app_paths(
     _ => join_path(home, ".config")
   }
   let config_dir = join_path(base, "mcpx")
-  let servers_config_jsonc = join_path(config_dir, "mcpServers.jsonc")
-  let servers_config_json = join_path(config_dir, "mcpServers.json")
+  let servers_config_jsonc = join_path(config_dir, "mcp.jsonc")
+  let servers_config_json = join_path(config_dir, "mcp.json")
   {
     config_dir,
     servers_config: resolve_existing_or_default(
