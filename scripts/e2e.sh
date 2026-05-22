@@ -244,6 +244,119 @@ assert_tool_list "$out"
 out="$(HOME="$tmp/home" XDG_CONFIG_HOME="$config_home" "$mcpx" call stdio echo '{"text":"stdio"}')"
 assert_echo_call "$out" "stdio"
 
+echo "[daemon] keep-alive stdio call closes captured pipes"
+cat >"$config_home/mcpx/mcpServers.jsonc" <<EOF_CFG
+{
+  "mcpServers": {
+    "stdio": {
+      "transport": "stdio",
+      "command": "python3",
+      "args": ["-u", "$stdio_py"],
+      "lifecycle": { "mode": "keep-alive" }
+    }
+  }
+}
+EOF_CFG
+python3 - "$mcpx" "$tmp/home" "$config_home" <<'PY'
+import errno, os, selectors, subprocess, sys, time
+
+mcpx, home, config_home = sys.argv[1:4]
+env = os.environ.copy()
+env["HOME"] = home
+env["XDG_CONFIG_HOME"] = config_home
+
+p = subprocess.Popen(
+    [mcpx, "call", "stdio", "echo", '{"text":"pipe"}'],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    env=env,
+)
+try:
+    rc = p.wait(timeout=3.0)
+except subprocess.TimeoutExpired:
+    p.kill()
+    p.wait(timeout=1.0)
+    raise SystemExit("mcpx call did not exit")
+
+if rc != 0:
+    raise SystemExit(f"mcpx call exited with {rc}")
+
+try:
+    os.write(p.stdin.fileno(), b"x")
+except BrokenPipeError:
+    pass
+except OSError as exc:
+    if exc.errno != errno.EPIPE:
+        raise
+else:
+    subprocess.run(
+        [mcpx, "daemon", "stop"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=env,
+        timeout=3.0,
+        check=False,
+    )
+    raise SystemExit(
+        "mcpx call stdin pipe still has a reader; daemon likely inherited stdin"
+    )
+finally:
+    p.stdin.close()
+
+selector = selectors.DefaultSelector()
+buffers = {"stdout": bytearray(), "stderr": bytearray()}
+open_streams = 0
+for name, stream in (("stdout", p.stdout), ("stderr", p.stderr)):
+    os.set_blocking(stream.fileno(), False)
+    selector.register(stream, selectors.EVENT_READ, data=name)
+    open_streams += 1
+
+deadline = time.monotonic() + 1.0
+while open_streams and time.monotonic() < deadline:
+    remaining = max(0.0, deadline - time.monotonic())
+    events = selector.select(remaining)
+    if not events:
+        break
+    for key, _ in events:
+        chunk = key.fileobj.read()
+        if chunk is None:
+            continue
+        if chunk == b"":
+            selector.unregister(key.fileobj)
+            open_streams -= 1
+            continue
+        buffers[key.data].extend(chunk)
+
+if open_streams:
+    subprocess.run(
+        [mcpx, "daemon", "stop"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=env,
+        timeout=3.0,
+        check=False,
+    )
+    raise SystemExit(
+        "mcpx call pipes did not reach EOF; daemon likely inherited stdout/stderr"
+    )
+
+stdout = buffers["stdout"].decode("utf-8")
+stderr = buffers["stderr"].decode("utf-8")
+if stdout.strip() != "pipe":
+    raise SystemExit(f"expected stdout 'pipe', got: {stdout!r}")
+if stderr:
+    raise SystemExit(f"expected empty stderr, got: {stderr!r}")
+subprocess.run(
+    [mcpx, "daemon", "stop"],
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+    env=env,
+    timeout=3.0,
+    check=True,
+)
+PY
+
 echo "[daemon] status smoke"
 out="$(HOME="$tmp/home" XDG_CONFIG_HOME="$config_home" "$mcpx" daemon status)"
 assert_daemon_status "$out" "false"

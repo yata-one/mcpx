@@ -8,6 +8,9 @@ pub suberror McpxDaemonError {
 } derive(Debug)
 
 ///|
+priv suberror McpxDaemonStop
+
+///|
 priv struct DaemonEntry {
   client : @mcp_stdio.StdioMcpClient
   mutex : @async.Semaphore
@@ -66,10 +69,14 @@ pub async fn run_mcpx_daemon_foreground(
     let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
     let port = server.addr.port()
     write_daemon_state(home~, config_home~, port~)
-    defer remove_daemon_state(home~, config_home~)
-    server.run_forever(allow_failure=true, (conn, _) => {
-      handle_conn(conn, group, pool, server)
-    })
+    defer pool.close_all()
+    group.add_defer(() => remove_daemon_state(home~, config_home~))
+    server.run_forever(allow_failure=false, (conn, _) => {
+      handle_conn(conn, group, pool)
+    }) catch {
+      McpxDaemonStop => ()
+      err => raise err
+    }
   }) catch {
     _ => ()
   }
@@ -108,8 +115,25 @@ pub async fn ensure_mcpx_daemon_running(
 ///|
 async fn start_daemon_process() -> Unit raise McpxDaemonError {
   let exe = @sys.get_cli_args().get(0).unwrap_or("mcpx")
+  let null_path = daemon_null_device_path()
+  let stdin = @process.redirect_from_file(null_path) catch {
+    error => raise McpxDaemonError::ConnectFailed(error.to_string())
+  }
+  let stdout = @process.redirect_to_file(null_path) catch {
+    error => raise McpxDaemonError::ConnectFailed(error.to_string())
+  }
+  let stderr = @process.redirect_to_file(null_path) catch {
+    error => raise McpxDaemonError::ConnectFailed(error.to_string())
+  }
   ignore(
-    @process.spawn_orphan(exe, [], extra_env={ "MCPX_INTERNAL_DAEMON": "serve" }) catch {
+    @process.spawn_orphan(
+      exe,
+      [],
+      extra_env={ "MCPX_INTERNAL_DAEMON": "serve" },
+      stdin~,
+      stdout~,
+      stderr~,
+    ) catch {
       error => raise McpxDaemonError::ConnectFailed(error.to_string())
     },
   )
@@ -161,7 +185,14 @@ pub async fn daemon_stop(
   let req = Json::object({ "op": Json::string("stop") })
   let response = request(home~, config_home~, req)
   match response {
-    Object(obj) => obj.get("ok") == Some(Json::boolean(true))
+    Object(obj) =>
+      if obj.get("ok") == Some(Json::boolean(true)) {
+        wait_for_daemon_state_removed(home~, config_home~) catch {
+          _ => false
+        }
+      } else {
+        false
+      }
     _ => false
   }
 }
@@ -171,17 +202,19 @@ async fn handle_conn(
   conn : @socket.Tcp,
   group : @async.TaskGroup[Unit],
   pool : DaemonPool,
-  server : @socket.TcpServer,
 ) -> Unit {
   let line = conn.read_until("\n") catch { _ => None }
-  let response = match line {
-    None => error_response("empty request")
-    Some(text) => handle_request(text, group, pool, server)
+  let (response, should_stop) = match line {
+    None => (error_response("empty request"), false)
+    Some(text) => handle_request(text, group, pool)
   }
   conn.write(response.stringify() + "\n") catch {
     _ => ()
   }
   conn.close()
+  if should_stop {
+    raise McpxDaemonStop
+  }
 }
 
 ///|
@@ -189,28 +222,24 @@ async fn handle_request(
   text : String,
   group : @async.TaskGroup[Unit],
   pool : DaemonPool,
-  server : @socket.TcpServer,
-) -> Json {
+) -> (Json, Bool) {
   let req = @json.parse(text) catch {
-    err => return error_response(err.to_string())
+    err => return (error_response(err.to_string()), false)
   }
   let obj = match req {
     Object(value) => value
-    _ => return error_response("request must be object")
+    _ => return (error_response("request must be object"), false)
   }
   let op = match obj.get("op") {
     Some(String(value)) => value
     _ => ""
   }
   match op {
-    "ping" => ok_response(Json::object({}))
-    "stop" => {
-      server.close()
-      ok_response(Json::object({}))
-    }
-    "call_tool" => handle_call_tool(obj, group, pool)
-    "list_tools" => handle_list_tools(obj, group, pool)
-    _ => error_response("unknown op")
+    "ping" => (ok_response(Json::object({})), false)
+    "stop" => (ok_response(Json::object({})), true)
+    "call_tool" => (handle_call_tool(obj, group, pool), false)
+    "list_tools" => (handle_list_tools(obj, group, pool), false)
+    _ => (error_response("unknown op"), false)
   }
 }
 
@@ -382,6 +411,18 @@ fn close_entry(entry : Ref[DaemonEntry]) -> Unit {
 }
 
 ///|
+fn DaemonPool::close_all(self : DaemonPool) -> Unit {
+  let entries = []
+  for _, entry in self.entries {
+    entries.push(entry)
+  }
+  self.entries.clear()
+  for entry in entries {
+    close_entry(entry)
+  }
+}
+
+///|
 async fn request(
   home~ : String,
   config_home? : String? = None,
@@ -527,4 +568,34 @@ fn remove_daemon_state(home~ : String, config_home? : String? = None) -> Unit {
   @fs.remove_file(mcpx_daemon_state_path(home~, config_home~)) catch {
     _ => ()
   }
+}
+
+///|
+async fn wait_for_daemon_state_removed(
+  home~ : String,
+  config_home? : String? = None,
+) -> Bool {
+  let mut elapsed = 0
+  while elapsed < 6000 {
+    if read_mcpx_daemon_port(home~, config_home~) is None {
+      return true
+    }
+    @async.sleep(50) catch {
+      _ => return false
+    }
+    elapsed = elapsed + 50
+  }
+  read_mcpx_daemon_port(home~, config_home~) is None
+}
+
+///|
+#cfg(platform="windows")
+fn daemon_null_device_path() -> String {
+  "NUL"
+}
+
+///|
+#cfg(not(platform="windows"))
+fn daemon_null_device_path() -> String {
+  "/dev/null"
 }
