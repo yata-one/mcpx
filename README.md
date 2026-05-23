@@ -177,8 +177,11 @@ bash scripts/benchmark.sh
 
 ## Roadmap
 
+- [ ] adopt MCP `2026-07-28` stateless protocol
 - [ ] publish the JS build as a library package
 - [ ] provide an npm package that downloads/installs the native CLI
+
+Detail in: `bit issue list`
 
 ## Prior Art
 
