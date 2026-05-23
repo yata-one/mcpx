@@ -17,7 +17,13 @@ pub fn render_mcpx_command(command : McpxCommand) -> String {
 ///|
 pub fn mcpx_help_text() -> String {
   (
-    #|mcpx - Native MCP CLI
+    #|mcpx — execute MCP tools via CLI
+    #|
+    #|Workflow:
+    #|  0. Search MCP Server (if needed): mcpx search <pattern>
+    #|  1. Understand how to use server:  mcpx info <server>
+    #|  2. Understand how to use tool:    mcpx info <server> <tool>
+    #|  3. Call tool:                     mcpx call <server> <tool> [args]
     #|
     #|Usage:
     #|  mcpx
