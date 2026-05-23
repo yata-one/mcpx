@@ -1,0 +1,41 @@
+version 1
+key hub/work-item/83b9cd22/meta
+kind work-item
+clock toshiki-higa <toshiki-higa@localhost>=1
+timestamp 1779508929
+node toshiki-higa <toshiki-higa@localhost>
+deleted 0
+
+work-item 83b9cd22
+title Adopt MCP 2026-07-28 stateless protocol
+author toshiki-higa <toshiki-higa@localhost>
+created 1779508929
+updated 1779508929
+state open
+
+## Background
+
+MCP `2026-07-28` RC — largest revision since launch. Final spec ships July 28, 2026.
+https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
+
+Draft: https://modelcontextprotocol.io/specification/draft
+
+## Required (breaking)
+
+1. Remove `initialize`/`initialized` handshake; clientInfo, capabilities, protocolVersion move into `_meta` on every request — [SEP-2575](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2575)
+2. Remove `Mcp-Session-Id` header and protocol-level session — [SEP-2567](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2567)
+3. Send `Mcp-Method` + `Mcp-Name` headers on Streamable HTTP — [SEP-2243](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2243)
+4. Send `MCP-Protocol-Version` header — implied by stateless core
+5. Add `server/discover` method — [SEP-2575](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2575)
+
+## Recommended
+
+6. Validate OAuth `iss` (RFC 9207) — [SEP-2468](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2468)
+7. Send `application_type` in Dynamic Client Registration — [SEP-837](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/837)
+8. Display JSON Schema 2020-12 constructs in `mcpx info` — [SEP-2106](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2106)
+9. Cache `tools/list` via `ttlMs`/`cacheScope` — [SEP-2549](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2549)
+
+## Out of scope
+
+- Roots / Sampling / Logging deprecation ([SEP-2577](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2577)) — not in mcpx
+- MCP Apps / Tasks extensions — opt-in
