@@ -1,0 +1,28 @@
+{
+  "name": "@yata-one/mcpx",
+  "version": "0.1.0",
+  "description": "MCP client library — execute MCP tools via CLI or JS API",
+  "type": "module",
+  "main": "./mcpx.js",
+  "types": "./mcpx.d.ts",
+  "exports": {
+    ".": {
+      "import": "./mcpx.js",
+      "types": "./mcpx.d.ts"
+    }
+  },
+  "files": [
+    "mcpx.js",
+    "mcpx.d.ts"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "cli"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yata-one/mcpx.git"
+  }
+}

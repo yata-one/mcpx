@@ -7,6 +7,16 @@ pub struct HttpRequest {
 }
 
 ///|
+pub fn http_request(
+  http_method~ : String,
+  url~ : String,
+  headers? : Map[String, String] = Map([]),
+  body~ : String,
+) -> HttpRequest {
+  { http_method, url, headers, body }
+}
+
+///|
 pub struct HttpResponse {
   status_code : Int
   content_type : String?

@@ -14,7 +14,7 @@ supported_targets = "js"
 options(
   link: {
     "js": {
-      "exports": [ "mcpx_js_list_tools", "mcpx_js_call_tool" ],
+      "exports": [ "connect", "list_tools", "call_tool", "disconnect" ],
       "format": "esm",
     },
   },
