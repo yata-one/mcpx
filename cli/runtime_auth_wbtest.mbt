@@ -23,6 +23,7 @@ async test "mcpx runtime: auth no-browser json starts static-client OAuth withou
             @config.oauth_server_auth(
               client_id=Some("client-1"),
               metadata_url=Some(metadata_url),
+              scopes=["repo", "read:user"],
             ),
           ),
         ),
@@ -142,10 +143,239 @@ async test "mcpx runtime: auth no-browser json supports dynamic client registrat
     )
     inspect(result.contains("client_id=dyn-1"), content="true")
     inspect(
-      seen_registration_body.join(",").contains("\"client_name\":\"mcpx CLI\""),
+      seen_registration_body.join(",").contains("\"client_name\":\"mcpx\""),
       content="true",
     )
   })
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+async test "mcpx runtime: auth discovers OAuth when metadata URL is absent" {
+  let home = "/tmp/mcpx-runtime-auth-discovery-test/home"
+  let paths = @app_paths.mcpx_app_paths(home)
+  @fs.remove_file(paths.servers_config) catch {
+    _ => ()
+  }
+  @fs.remove_file(paths.credentials_file) catch {
+    _ => ()
+  }
+  @async.with_task_group(group => {
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
+    defer server.close()
+    let port = server.addr.port()
+    let resource_url = "http://localhost:\{port}/resource"
+    let issuer = "http://localhost:\{port}/tenant-a"
+    @storage.save_mcpx_config_file(
+      paths.servers_config,
+      @config.put_server_config(
+        @config.empty_mcpx_config(),
+        @config.mcp_server_config(
+          name="github",
+          transport=@config.ServerTransport::Http,
+          url=Some("http://localhost:\{port}/mcp"),
+          auth=Some(@config.oauth_server_auth(client_id=Some("client-1"))),
+        ),
+      ),
+    )
+    group.spawn_bg(no_wait=true, () => {
+      server.run_forever(allow_failure=true, (request, _body, conn) => {
+        if request.path == "/mcp" {
+          conn.send_response(401, "Unauthorized", extra_headers={
+            "WWW-Authenticate": "Bearer realm=\"mcp\", resource_metadata=\"\{resource_url}\"",
+          })
+          conn.end_response()
+        } else if request.path == "/resource" {
+          conn.send_response(200, "OK", extra_headers={
+            "content-type": "application/json",
+          })
+          conn
+          ..write(
+            Json::object({
+              "authorization_servers": Json::array([Json::string(issuer)]),
+            }).stringify(),
+          )
+          .end_response()
+        } else if request.path ==
+          "/.well-known/oauth-authorization-server/tenant-a" {
+          conn.send_response(200, "OK", extra_headers={
+            "content-type": "application/json",
+          })
+          conn
+          ..write(
+            Json::object({
+              "authorization_endpoint": Json::string(
+                "http://localhost:\{port}/authorize",
+              ),
+              "token_endpoint": Json::string("http://localhost:\{port}/token"),
+            }).stringify(),
+          )
+          .end_response()
+        } else {
+          conn.send_response(404, "Not Found")
+          conn.end_response()
+        }
+      })
+    })
+    let result = run_mcpx_args_async(
+      ["auth", "github", "--no-browser", "--json"],
+      home~,
+    )
+    inspect(result.contains("\"status\":\"ok\""), content="true")
+    inspect(result.contains("client_id=client-1"), content="true")
+    inspect(result.contains("scope="), content="false")
+  })
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+async test "mcpx runtime: auth discovery supports lowercase header and root issuer" {
+  let home = "/tmp/mcpx-runtime-auth-discovery-root-test/home"
+  let paths = @app_paths.mcpx_app_paths(home)
+  @fs.remove_file(paths.servers_config) catch {
+    _ => ()
+  }
+  @fs.remove_file(paths.credentials_file) catch {
+    _ => ()
+  }
+  @async.with_task_group(group => {
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
+    defer server.close()
+    let port = server.addr.port()
+    let resource_url = "http://localhost:\{port}/resource"
+    let issuer = "http://localhost:\{port}"
+    @storage.save_mcpx_config_file(
+      paths.servers_config,
+      @config.put_server_config(
+        @config.empty_mcpx_config(),
+        @config.mcp_server_config(
+          name="github",
+          transport=@config.ServerTransport::Http,
+          url=Some("http://localhost:\{port}/mcp"),
+          auth=Some(@config.oauth_server_auth(client_id=Some("client-1"))),
+        ),
+      ),
+    )
+    group.spawn_bg(no_wait=true, () => {
+      server.run_forever(allow_failure=true, (request, _body, conn) => {
+        if request.path == "/mcp" {
+          conn.send_response(401, "Unauthorized", extra_headers={
+            "www-authenticate": "Bearer realm=\"mcp\", resource_metadata=\"\{resource_url}\"",
+          })
+          conn.end_response()
+        } else if request.path == "/resource" {
+          conn.send_response(200, "OK", extra_headers={
+            "content-type": "application/json",
+          })
+          conn
+          ..write(
+            Json::object({
+              "authorization_servers": Json::array([Json::string(issuer)]),
+            }).stringify(),
+          )
+          .end_response()
+        } else if request.path == "/.well-known/oauth-authorization-server" {
+          conn.send_response(200, "OK", extra_headers={
+            "content-type": "application/json",
+          })
+          conn
+          ..write(
+            Json::object({
+              "authorization_endpoint": Json::string(
+                "http://localhost:\{port}/authorize",
+              ),
+              "token_endpoint": Json::string("http://localhost:\{port}/token"),
+            }).stringify(),
+          )
+          .end_response()
+        } else {
+          conn.send_response(404, "Not Found")
+          conn.end_response()
+        }
+      })
+    })
+    let result = run_mcpx_args_async(
+      ["auth", "github", "--no-browser", "--json"],
+      home~,
+    )
+    inspect(result.contains("\"status\":\"ok\""), content="true")
+    inspect(result.contains("client_id=client-1"), content="true")
+  })
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+async test "mcpx runtime: auth discovery fails when challenge has no resource metadata" {
+  let home = "/tmp/mcpx-runtime-auth-discovery-no-resource-test/home"
+  let paths = @app_paths.mcpx_app_paths(home)
+  @fs.remove_file(paths.servers_config) catch {
+    _ => ()
+  }
+  @fs.remove_file(paths.credentials_file) catch {
+    _ => ()
+  }
+  @async.with_task_group(group => {
+    let server = @http.Server(@socket.Addr::parse("127.0.0.1:0"))
+    defer server.close()
+    let port = server.addr.port()
+    @storage.save_mcpx_config_file(
+      paths.servers_config,
+      @config.put_server_config(
+        @config.empty_mcpx_config(),
+        @config.mcp_server_config(
+          name="github",
+          transport=@config.ServerTransport::Http,
+          url=Some("http://localhost:\{port}/mcp"),
+          auth=Some(@config.oauth_server_auth(client_id=Some("client-1"))),
+        ),
+      ),
+    )
+    group.spawn_bg(no_wait=true, () => {
+      server.run_forever(allow_failure=true, (_request, _body, conn) => {
+        conn.send_response(401, "Unauthorized", extra_headers={
+          "WWW-Authenticate": "Bearer realm=\"mcp\"",
+        })
+        conn.end_response()
+      })
+    })
+    let result = run_mcpx_args_async(
+      ["auth", "github", "--no-browser", "--json"],
+      home~,
+    )
+    inspect(
+      result.contains("OAuth metadata URL is required: github"),
+      content="true",
+    )
+  })
+}
+
+///|
+#cfg(all(target="native", not(platform="windows")))
+async test "mcpx runtime: auth config is required before OAuth discovery" {
+  let home = "/tmp/mcpx-runtime-auth-discovery-no-auth-test/home"
+  let paths = @app_paths.mcpx_app_paths(home)
+  @fs.remove_file(paths.servers_config) catch {
+    _ => ()
+  }
+  @fs.remove_file(paths.credentials_file) catch {
+    _ => ()
+  }
+  @storage.save_mcpx_config_file(
+    paths.servers_config,
+    @config.put_server_config(
+      @config.empty_mcpx_config(),
+      @config.mcp_server_config(
+        name="github",
+        transport=@config.ServerTransport::Http,
+        url=Some("http://localhost:1/mcp"),
+      ),
+    ),
+  )
+  let result = run_mcpx_args_async(
+    ["auth", "github", "--no-browser", "--json"],
+    home~,
+  )
+  inspect(result.contains("server has no OAuth config: github"), content="true")
 }
 
 ///|
@@ -274,6 +504,7 @@ async test "mcpx runtime: interactive auth uses browser callback listener" {
             @config.oauth_server_auth(
               client_id=Some("client-1"),
               metadata_url=Some(metadata_url),
+              scopes=["repo", "read:user"],
             ),
           ),
         ),

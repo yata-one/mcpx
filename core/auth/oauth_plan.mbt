@@ -23,14 +23,10 @@ pub fn oauth_metadata(
 
 ///|
 pub fn select_oauth_scopes(
-  metadata : OAuthMetadata,
+  _metadata : OAuthMetadata,
   requested_scopes~ : Array[String],
 ) -> Array[String] {
-  if requested_scopes.is_empty() {
-    metadata.scopes_supported
-  } else {
-    requested_scopes
-  }
+  requested_scopes
 }
 
 ///|
@@ -42,17 +38,18 @@ pub fn oauth_authorization_url(
   code_challenge~ : String,
   scopes~ : Array[String],
 ) -> String {
-  metadata.authorization_endpoint +
-  "?" +
-  [
+  let params = [
     query_pair("response_type", "code"),
     query_pair("client_id", client_id),
     query_pair("redirect_uri", redirect_uri),
     query_pair("code_challenge", code_challenge),
     query_pair("code_challenge_method", "S256"),
     query_pair("state", state),
-    query_pair("scope", scopes.join(" ")),
-  ].join("&")
+  ]
+  if !scopes.is_empty() {
+    params.push(query_pair("scope", scopes.join(" ")))
+  }
+  metadata.authorization_endpoint + "?" + params.join("&")
 }
 
 ///|

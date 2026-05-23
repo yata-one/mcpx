@@ -29,14 +29,12 @@ async fn run_auth(
         None =>
           return error_result("server has no OAuth config: " + command.server)
       }
-      let metadata_url = match auth.metadata_url {
-        Some(value) => value
-        None =>
-          return error_result(
-            "OAuth metadata URL is required: " + command.server,
-          )
-      }
-      let metadata = match fetch_oauth_metadata(metadata_url) {
+      let metadata = match
+        resolve_oauth_metadata(
+          server_name=command.server,
+          server_url=resolved_server.url,
+          metadata_url=auth.metadata_url,
+        ) {
         Ok(value) => value
         Err(message) => return error_result(message)
       }
@@ -227,7 +225,7 @@ async fn register_oauth_client(
     None => return Err("OAuth dynamic client registration is unavailable")
   }
   let body = @auth.dynamic_client_registration_request(
-    client_name="mcpx CLI",
+    client_name="mcpx",
     redirect_uri~,
   ).stringify()
   let (response, data) = @http.post(registration_endpoint, body, headers={
@@ -365,11 +363,12 @@ async fn refresh_oauth_credentials(
     Some(value) => value
     None => return Err("authentication required: run mcpx auth " + server_name)
   }
-  let metadata_url = match auth.metadata_url {
-    Some(value) => value
-    None => return Err("OAuth metadata URL is required: " + server_name)
-  }
-  let metadata = match fetch_oauth_metadata(metadata_url) {
+  let metadata = match
+    resolve_oauth_metadata(
+      server_name~,
+      server_url=Some(server_url),
+      metadata_url=auth.metadata_url,
+    ) {
     Ok(value) => value
     Err(message) => return Err(message)
   }
@@ -463,4 +462,137 @@ fn credentials_cache_key(server_name : String, client_id : String) -> String {
 ///|
 fn has_authorization_header(headers : Map[String, String]) -> Bool {
   headers.contains("Authorization") || headers.contains("authorization")
+}
+
+///|
+async fn resolve_oauth_metadata(
+  server_name~ : String,
+  server_url~ : String?,
+  metadata_url~ : String?,
+) -> Result[@auth.OAuthMetadata, String] {
+  match metadata_url {
+    Some(url) => fetch_oauth_metadata(url)
+    None => {
+      let url = match server_url {
+        Some(value) => value
+        None => return Err("OAuth metadata URL is required: " + server_name)
+      }
+      match discover_oauth_metadata(url) {
+        Ok(value) => Ok(value)
+        Err(_) => Err("OAuth metadata URL is required: " + server_name)
+      }
+    }
+  }
+}
+
+///|
+async fn discover_oauth_metadata(
+  server_url : String,
+) -> Result[@auth.OAuthMetadata, String] {
+  let (response, _data) = @http.get(server_url) catch {
+    _ => return Err("failed to connect to server")
+  }
+  let www_auth = match http_header(response.headers, "www-authenticate") {
+    Some(value) => value
+    None => return Err("no www-authenticate header")
+  }
+  let resource_url = match parse_www_authenticate_resource_metadata(www_auth) {
+    Some(value) => value
+    None => return Err("no resource_metadata in www-authenticate")
+  }
+  let (res, res_data) = @http.get(resource_url, headers={
+    "accept": "application/json",
+  }) catch {
+    _ => return Err("failed to fetch resource metadata")
+  }
+  if res.code != 200 {
+    return Err("failed to fetch resource metadata")
+  }
+  let res_json = res_data.json() catch {
+    _ => return Err("invalid resource metadata")
+  }
+  let auth_servers = match decode_authorization_servers(res_json) {
+    Some(value) => value
+    None => return Err("no authorization_servers in resource metadata")
+  }
+  let issuer = match auth_servers.get(0) {
+    Some(value) => value
+    None => return Err("empty authorization_servers")
+  }
+  fetch_oauth_metadata(oauth_authorization_server_metadata_url(issuer))
+}
+
+///|
+fn http_header(headers : Map[String, String], name : String) -> String? {
+  match headers.get(name) {
+    Some(value) => Some(value)
+    None =>
+      for key, value in headers {
+        if key.equal_ignore_ascii_case(name) {
+          break Some(value)
+        }
+      } nobreak {
+        None
+      }
+  }
+}
+
+///|
+fn parse_www_authenticate_resource_metadata(header : String) -> String? {
+  let marker = "resource_metadata=\""
+  let start = match header.to_lower().find(marker) {
+    Some(pos) => pos + marker.length()
+    None => return None
+  }
+  let rest = header.to_string_view().view(start_offset=start)
+  let end = match rest.find("\"") {
+    Some(pos) => pos
+    None => return None
+  }
+  match rest.get_view(start=0, end~) {
+    Some(value) => Some(value.to_owned())
+    None => None
+  }
+}
+
+///|
+fn decode_authorization_servers(json : Json) -> Array[String]? {
+  match json {
+    Object(obj) =>
+      match obj.get("authorization_servers") {
+        Some(Array(servers)) => {
+          let urls = []
+          for server in servers {
+            match server {
+              String(url) => urls.push(url)
+              _ => ()
+            }
+          }
+          Some(urls)
+        }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn oauth_authorization_server_metadata_url(issuer : String) -> String {
+  let normalized = match issuer.strip_suffix("/") {
+    Some(value) => value.to_owned()
+    None => issuer
+  }
+  let well_known = "/.well-known/oauth-authorization-server"
+  match normalized.split_once("://") {
+    Some((scheme, rest)) =>
+      match rest.find("/") {
+        Some(path_start) => {
+          let host = rest.view(end_offset=path_start).to_owned()
+          let path = rest.view(start_offset=path_start).to_owned()
+          scheme.to_owned() + "://" + host + well_known + path
+        }
+        None => normalized + well_known
+      }
+    None => normalized + well_known
+  }
 }

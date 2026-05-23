@@ -1,13 +1,13 @@
 ///|
-test "oauth plan: scopes are metadata-first and not hardcoded" {
+test "oauth plan: empty requested scopes returns empty" {
   let metadata = oauth_metadata(
     authorization_endpoint="https://auth.example/authorize",
     token_endpoint="https://auth.example/token",
     scopes_supported=["repo", "read:user"],
   )
   inspect(
-    select_oauth_scopes(metadata, requested_scopes=[]).join(" "),
-    content="repo read:user",
+    select_oauth_scopes(metadata, requested_scopes=[]).is_empty(),
+    content="true",
   )
 }
 
@@ -45,14 +45,31 @@ test "oauth plan: builds PKCE authorization URL" {
 }
 
 ///|
+test "oauth plan: omits scope parameter when scopes are empty" {
+  let metadata = oauth_metadata(
+    authorization_endpoint="https://auth.example/authorize",
+    token_endpoint="https://auth.example/token",
+  )
+  let url = oauth_authorization_url(
+    metadata,
+    client_id="client-1",
+    redirect_uri="http://127.0.0.1:8765/callback",
+    state="state-1",
+    code_challenge="challenge-1",
+    scopes=[],
+  )
+  inspect(!url.contains("scope="), content="true")
+}
+
+///|
 test "oauth plan: dynamic client registration request is JSON" {
   inspect(
     dynamic_client_registration_request(
-      client_name="mcpx CLI",
+      client_name="mcpx",
       redirect_uri="http://127.0.0.1:8765/callback",
     ).stringify(),
     content=(
-      #|{"client_name":"mcpx CLI","redirect_uris":["http://127.0.0.1:8765/callback"],"grant_types":["authorization_code","refresh_token"],"response_types":["code"],"token_endpoint_auth_method":"none"}
+      #|{"client_name":"mcpx","redirect_uris":["http://127.0.0.1:8765/callback"],"grant_types":["authorization_code","refresh_token"],"response_types":["code"],"token_endpoint_auth_method":"none"}
     ),
   )
 }

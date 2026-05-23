@@ -22,13 +22,13 @@ test "auth host actions oauth: dynamic client registration is host HTTP POST" {
   inspect(
     oauth_dynamic_client_registration_action(
       metadata,
-      client_name="mcpx CLI",
+      client_name="mcpx",
       redirect_uri="http://127.0.0.1:8765/callback",
     )
     .to_json()
     .stringify(),
     content=(
-      #|{"kind":"http_request","method":"POST","url":"https://auth.example/register","headers":{"content-type":"application/json","accept":"application/json"},"body":"{\"client_name\":\"mcpx CLI\",\"redirect_uris\":[\"http://127.0.0.1:8765/callback\"],\"grant_types\":[\"authorization_code\",\"refresh_token\"],\"response_types\":[\"code\"],\"token_endpoint_auth_method\":\"none\"}"}
+      #|{"kind":"http_request","method":"POST","url":"https://auth.example/register","headers":{"content-type":"application/json","accept":"application/json"},"body":"{\"client_name\":\"mcpx\",\"redirect_uris\":[\"http://127.0.0.1:8765/callback\"],\"grant_types\":[\"authorization_code\",\"refresh_token\"],\"response_types\":[\"code\"],\"token_endpoint_auth_method\":\"none\"}"}
     ),
   )
 }
