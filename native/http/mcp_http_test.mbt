@@ -1,6 +1,6 @@
 ///|
 #cfg(all(target="native", not(platform="windows")))
-async test "mcp http: initialize then call tool with session" {
+async test "mcp http: falls back to initialize then call tool with session" {
   let seen_session = []
   @async.with_task_group(group => {
     let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
@@ -24,7 +24,7 @@ async test "mcp http: initialize then call tool with session" {
         }
         if rpc_method == "initialize" {
           let result = Json::object({
-            "protocolVersion": Json::string("2025-03-26"),
+            "protocolVersion": Json::string("2025-11-25"),
             "capabilities": Json::object({}),
             "serverInfo": Json::object({ "name": Json::string("srv") }),
           })
@@ -45,21 +45,40 @@ async test "mcp http: initialize then call tool with session" {
           conn.send_response(202, "Accepted")
           conn.end_response()
         } else if rpc_method == "tools/call" {
-          seen_session.push(
-            request.headers.get("mcp-session-id").unwrap_or("none"),
-          )
-          conn.send_response(200, "OK", extra_headers={
-            "content-type": "application/json",
-          })
-          conn
-          ..write(
-            Json::object({
-              "jsonrpc": Json::string("2.0"),
-              "id": id,
-              "result": Json::object({ "ok": Json::boolean(true) }),
-            }).stringify(),
-          )
-          .end_response()
+          let session = request.headers.get("mcp-session-id").unwrap_or("none")
+          if session == "none" {
+            conn.send_response(400, "Bad Request", extra_headers={
+              "content-type": "application/json",
+            })
+            conn
+            ..write(
+              Json::object({
+                "jsonrpc": Json::string("2.0"),
+                "id": id,
+                "error": Json::object({
+                  "code": Json::number(-32000.0, repr="-32000"),
+                  "message": Json::string(
+                    "Bad Request: No valid session ID provided",
+                  ),
+                }),
+              }).stringify(),
+            )
+            .end_response()
+          } else {
+            seen_session.push(session)
+            conn.send_response(200, "OK", extra_headers={
+              "content-type": "application/json",
+            })
+            conn
+            ..write(
+              Json::object({
+                "jsonrpc": Json::string("2.0"),
+                "id": id,
+                "result": Json::object({ "ok": Json::boolean(true) }),
+              }).stringify(),
+            )
+            .end_response()
+          }
         } else {
           conn.send_response(500, "Unknown")
           conn.end_response()
@@ -150,7 +169,7 @@ async test "mcp http: decodes text event stream JSON-RPC response" {
 
 ///|
 #cfg(all(target="native", not(platform="windows")))
-async test "mcp http: lists tools after initialize" {
+async test "mcp http: lists tools with stateless request" {
   @async.with_task_group(group => {
     let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     defer server.close()

@@ -1,7 +1,9 @@
 import {
   "yata-one/mcpx/core/protocol" @protocol,
+  "moonbitlang/core/json" @json,
 }
 
 import {
   "moonbitlang/async",
+  "moonbitlang/core/debug" @debug,
 } for "test"

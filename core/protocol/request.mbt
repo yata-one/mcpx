@@ -21,11 +21,17 @@ pub suberror McpProtocolError {
 } derive(Debug)
 
 ///|
+pub const MCP_PROTOCOL_VERSION : String = "2026-07-28"
+
+///|
+pub const MCP_PROTOCOL_VERSION_LEGACY : String = "2025-11-25"
+
+///|
 pub fn mcp_initialize_request(
   id~ : Int,
   client_name~ : String,
   client_version~ : String,
-  protocol_version? : String = "2025-03-26",
+  protocol_version? : String = MCP_PROTOCOL_VERSION,
 ) -> Json {
   let params = Map([])
   params["protocolVersion"] = Json::string(protocol_version)
@@ -43,12 +49,23 @@ pub fn mcp_initialized_notification() -> Json {
 }
 
 ///|
-pub fn mcp_tools_list_request(id~ : Int) -> Json {
+pub fn mcp_tools_list_request_legacy(id~ : Int) -> Json {
   mcp_request(id, "tools/list", Some(Json::object(Map([]))))
 }
 
 ///|
-pub fn mcp_tool_call_request(
+pub fn mcp_tools_list_request(
+  id~ : Int,
+  client_name~ : String,
+  client_version~ : String,
+) -> Json {
+  let params = Map([])
+  params["_meta"] = mcp_request_meta(client_name~, client_version~)
+  mcp_request(id, "tools/list", Some(Json::object(params)))
+}
+
+///|
+pub fn mcp_tool_call_request_legacy(
   id~ : Int,
   name~ : String,
   arguments~ : Json,
@@ -56,6 +73,21 @@ pub fn mcp_tool_call_request(
   let params = Map([])
   params["name"] = Json::string(name)
   params["arguments"] = arguments
+  mcp_request(id, "tools/call", Some(Json::object(params)))
+}
+
+///|
+pub fn mcp_tool_call_request(
+  id~ : Int,
+  name~ : String,
+  arguments~ : Json,
+  client_name~ : String,
+  client_version~ : String,
+) -> Json {
+  let params = Map([])
+  params["name"] = Json::string(name)
+  params["arguments"] = arguments
+  params["_meta"] = mcp_request_meta(client_name~, client_version~)
   mcp_request(id, "tools/call", Some(Json::object(params)))
 }
 
@@ -87,4 +119,18 @@ pub fn mcp_notification(rpc_method : String, params : Json?) -> Json {
 ///|
 fn json_int(value : Int) -> Json {
   Json::number(Double::from_int(value), repr=value.to_string())
+}
+
+///|
+fn mcp_request_meta(client_name~ : String, client_version~ : String) -> Json {
+  let meta = Map([])
+  meta["io.modelcontextprotocol/protocolVersion"] = Json::string(
+    MCP_PROTOCOL_VERSION,
+  )
+  meta["io.modelcontextprotocol/clientInfo"] = Json::object({
+    "name": Json::string(client_name),
+    "version": Json::string(client_version),
+  })
+  meta["io.modelcontextprotocol/clientCapabilities"] = Json::object({})
+  Json::object(meta)
 }

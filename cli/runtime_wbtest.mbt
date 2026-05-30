@@ -2,7 +2,10 @@
 test "mcpx runtime: no args and --help return help text" {
   let no_args = run_mcpx_args([], home="/tmp/mcpx-runtime-test/home")
   let help = run_mcpx_args(["--help"], home="/tmp/mcpx-runtime-test/home")
-  inspect(no_args.contains("mcpx — execute MCP tools via CLI"), content="true")
+  inspect(
+    no_args.contains("mcpx — execute MCP tools via CLI"),
+    content="true",
+  )
   inspect(no_args.contains("mcpx info <server|mcp-url> <tool>"), content="true")
   inspect(help == no_args, content="true")
 }

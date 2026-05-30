@@ -5,7 +5,7 @@ test "mcp client: pure initialize list and call sequence" {
   inspect(
     init.message.stringify(),
     content=(
-      #|{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"mcpx","version":"0.1.0"}}}
+      #|{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{},"clientInfo":{"name":"mcpx","version":"0.1.0"}}}
     ),
   )
   ignore(

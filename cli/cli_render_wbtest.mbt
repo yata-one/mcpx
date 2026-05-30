@@ -3,7 +3,10 @@ test "cli render: help text is human-readable" {
   match parse_mcpx_args([]) {
     Ok(command) => {
       let help = render_mcpx_command(command)
-      inspect(help.contains("mcpx — execute MCP tools via CLI"), content="true")
+      inspect(
+        help.contains("mcpx — execute MCP tools via CLI"),
+        content="true",
+      )
       inspect(
         help.contains("mcpx info <server|mcp-url> <tool>"),
         content="true",
