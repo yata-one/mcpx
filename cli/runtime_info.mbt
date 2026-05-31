@@ -81,17 +81,65 @@ fn run_info_servers(home : String, config_home : String?) -> String {
     return "No servers configured.\nConfig: " + paths.servers_config
   }
   let lines = ["Servers"]
+  let name_width = max_server_name_width(config.servers)
   for name, server in config.servers {
-    lines.push(
-      "  " +
-      name +
-      "  " +
-      server_transport_text(server) +
-      "  " +
-      server_endpoint_text(server),
-    )
+    match first_description_line(server.description) {
+      Some(description) =>
+        lines.push(
+          "  " +
+          pad_right(name, name_width) +
+          "  " +
+          truncate_chars(description, 60),
+        )
+      None => lines.push("  " + name)
+    }
   }
   lines.join("\n")
+}
+
+///|
+fn max_server_name_width(servers : Map[String, @config.McpServerConfig]) -> Int {
+  let mut width = 0
+  for name, _ in servers {
+    if name.length() > width {
+      width = name.length()
+    }
+  }
+  width
+}
+
+///|
+fn pad_right(text : String, width : Int) -> String {
+  if text.length() >= width {
+    return text
+  }
+  let out = StringBuilder::new(size_hint=width)
+  out.write_string(text)
+  for _ in text.length()..<width {
+    out.write_char(' ')
+  }
+  out.to_string()
+}
+
+///|
+fn truncate_chars(text : String, max_chars : Int) -> String {
+  let chars = text.to_array()
+  if chars.length() <= max_chars {
+    return text
+  }
+  if max_chars <= 3 {
+    let out = StringBuilder::new(size_hint=max_chars)
+    for _ in 0..<max_chars {
+      out.write_char('.')
+    }
+    return out.to_string()
+  }
+  let out = StringBuilder::new(size_hint=max_chars)
+  for i in 0..<(max_chars - 3) {
+    out.write_char(chars[i])
+  }
+  out.write_string("...")
+  out.to_string()
 }
 
 ///|
@@ -99,18 +147,6 @@ fn server_transport_text(server : @config.McpServerConfig) -> String {
   match server.transport {
     @config.ServerTransport::Http => "http"
     @config.ServerTransport::Stdio => "stdio"
-  }
-}
-
-///|
-fn server_endpoint_text(server : @config.McpServerConfig) -> String {
-  match server.url {
-    Some(url) => return url
-    None => ()
-  }
-  match server.command {
-    Some(command) => command
-    None => "-"
   }
 }
 
