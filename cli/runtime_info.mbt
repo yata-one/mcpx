@@ -82,14 +82,10 @@ fn run_info_servers(home : String, config_home : String?) -> String {
   }
   let lines = ["Servers"]
   for name, server in config.servers {
-    lines.push(
-      "  " +
-      name +
-      "  " +
-      server_transport_text(server) +
-      "  " +
-      server_endpoint_text(server),
-    )
+    match first_description_line(server.description) {
+      Some(description) => lines.push("  " + name + "  " + description)
+      None => lines.push("  " + name)
+    }
   }
   lines.join("\n")
 }
@@ -99,18 +95,6 @@ fn server_transport_text(server : @config.McpServerConfig) -> String {
   match server.transport {
     @config.ServerTransport::Http => "http"
     @config.ServerTransport::Stdio => "stdio"
-  }
-}
-
-///|
-fn server_endpoint_text(server : @config.McpServerConfig) -> String {
-  match server.url {
-    Some(url) => return url
-    None => ()
-  }
-  match server.command {
-    Some(command) => command
-    None => "-"
   }
 }
 

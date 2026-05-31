@@ -117,17 +117,21 @@ async test "mcpx runtime: info without target lists configured servers" {
   }
   @storage.save_mcpx_config_file(
     paths.servers_config,
-    @config.put_remote_mcp_server(
+    @config.put_server_config(
       @config.empty_mcpx_config(),
-      name="github",
-      url="https://mcp.github.com/mcp",
+      @config.mcp_server_config(
+        name="github",
+        transport=@config.ServerTransport::Http,
+        url=Some("https://mcp.github.com/mcp"),
+        description=Some("GitHub Issues, PRs, and code search\nMore details"),
+      ),
     ),
   )
   inspect(
     run_mcpx_args_async(["info"], home~),
     content=(
       #|Servers
-      #|  github  http  https://mcp.github.com/mcp
+      #|  github  GitHub Issues, PRs, and code search
     ),
   )
 }
