@@ -6,7 +6,7 @@ pub async fn list_tools(
   let request = @protocol.mcp_tools_list_request(
     id=1,
     client_name="mcpx",
-    client_version="0.1.0",
+    client_version="0.1.2",
   )
   let response = post_json(
     fetch,
@@ -39,7 +39,7 @@ pub async fn call_tool(
     name=tool_name,
     arguments~,
     client_name="mcpx",
-    client_version="0.1.0",
+    client_version="0.1.2",
   )
   let response = post_json(
     fetch,
@@ -71,7 +71,7 @@ async fn list_tools_legacy(
   let session_id = Ref(None)
   let client = @protocol.mcp_client(
     client_name="mcpx",
-    client_version="0.1.0",
+    client_version="0.1.2",
     protocol_version=@protocol.MCP_PROTOCOL_VERSION_LEGACY,
   )
   initialize_legacy(fetch, endpoint, client, session_id)
@@ -98,7 +98,7 @@ async fn call_tool_legacy(
   let session_id = Ref(None)
   let client = @protocol.mcp_client(
     client_name="mcpx",
-    client_version="0.1.0",
+    client_version="0.1.2",
     protocol_version=@protocol.MCP_PROTOCOL_VERSION_LEGACY,
   )
   initialize_legacy(fetch, endpoint, client, session_id)

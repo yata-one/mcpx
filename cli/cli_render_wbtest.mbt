@@ -20,7 +20,7 @@ test "cli render: help text is human-readable" {
 ///|
 test "cli render: version text" {
   match parse_mcpx_args(["--version"]) {
-    Ok(command) => inspect(render_mcpx_command(command), content="mcpx 0.1.0")
+    Ok(command) => inspect(render_mcpx_command(command), content="mcpx 0.1.2")
     Err(error) => @debug.debug_inspect(error, content="UNREACHABLE")
   }
 }

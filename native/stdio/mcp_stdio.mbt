@@ -35,7 +35,7 @@ pub async fn[X] stdio_mcp_connect(
   let conn = spawn_stdio(group, command, args, env, cwd)
   let client = @mcp_client.mcp_client(
     client_name="mcpx",
-    client_version="0.1.0",
+    client_version="0.1.2",
   )
   initialize_stdio(conn, client)
   { conn, client }
