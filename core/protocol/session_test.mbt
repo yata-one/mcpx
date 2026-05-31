@@ -1,6 +1,6 @@
 ///|
 test "mcp client session: tracks initialization and request ids" {
-  let client = mcp_client(client_name="mcpx", client_version="0.1.2")
+  let client = mcp_client(client_name="mcpx", client_version="0.1.3")
   inspect(client.is_initialized(), content="false")
   let init = client.initialize_request()
   @debug.debug_inspect(init.id, content="Some(1)")

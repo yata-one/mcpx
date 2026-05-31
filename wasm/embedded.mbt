@@ -126,7 +126,7 @@ fn run_mcp_http_initialize(obj : Map[String, Json]) -> String {
   }
   let client = @mcp_client.mcp_client(
     client_name="mcpx",
-    client_version="0.1.2",
+    client_version="0.1.3",
   )
   let request = client.initialize_request()
   let request_id = request.expected_id() catch {
@@ -156,7 +156,7 @@ fn run_mcp_http_operation(
   }
   let client = @mcp_client.mcp_client(
     client_name="mcpx",
-    client_version="0.1.2",
+    client_version="0.1.3",
   )
   let request = client.initialize_request()
   let request_id = request.expected_id() catch {
@@ -264,7 +264,7 @@ fn reduce_mcp_http_initialized(
     Some("list") => {
       let client = @mcp_client.mcp_client(
         client_name="mcpx",
-        client_version="0.1.2",
+        client_version="0.1.3",
       )
       ignore(client.initialize_request())
       let request = client.tools_list_request()
@@ -291,7 +291,7 @@ fn reduce_mcp_http_initialized(
       let arguments = state_obj.get("arguments").unwrap_or(Json::object({}))
       let client = @mcp_client.mcp_client(
         client_name="mcpx",
-        client_version="0.1.2",
+        client_version="0.1.3",
       )
       ignore(client.initialize_request())
       let request = client.tool_call_request(name=tool_name, arguments~)

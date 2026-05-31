@@ -115,19 +115,35 @@ async test "mcpx runtime: info without target lists configured servers" {
   @fs.remove_file(paths.servers_config) catch {
     _ => ()
   }
+  let config = @config.put_server_config(
+    @config.empty_mcpx_config(),
+    @config.mcp_server_config(
+      name="github",
+      transport=@config.ServerTransport::Http,
+      url=Some("https://mcp.github.com/mcp"),
+      description=Some("GitHub Issues, PRs, and code search\nMore details"),
+    ),
+  )
   @storage.save_mcpx_config_file(
     paths.servers_config,
-    @config.put_remote_mcp_server(
-      @config.empty_mcpx_config(),
-      name="github",
-      url="https://mcp.github.com/mcp",
+    @config.put_server_config(
+      config,
+      @config.mcp_server_config(
+        name="very-long-server-name",
+        transport=@config.ServerTransport::Http,
+        url=Some("https://example.com/mcp"),
+        description=Some(
+          "This description is intentionally longer than sixty characters total",
+        ),
+      ),
     ),
   )
   inspect(
     run_mcpx_args_async(["info"], home~),
     content=(
       #|Servers
-      #|  github  http  https://mcp.github.com/mcp
+      #|  github                 GitHub Issues, PRs, and code search
+      #|  very-long-server-name  This description is intentionally longer than sixty chara...
     ),
   )
 }

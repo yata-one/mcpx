@@ -4,7 +4,7 @@ pub async fn list_tools(
   endpoint : Endpoint,
 ) -> Array[@protocol.McpToolInfo] raise McpHttpClientError {
   let session_id = Ref(None)
-  let client = @protocol.mcp_client(client_name="mcpx", client_version="0.1.2")
+  let client = @protocol.mcp_client(client_name="mcpx", client_version="0.1.3")
   initialize(fetch, endpoint, client, session_id)
   let list = client.tools_list_request()
   let list_response = send_json(fetch, endpoint, session_id, list.message)
@@ -22,7 +22,7 @@ pub async fn call_tool(
   arguments~ : Json,
 ) -> Json raise McpHttpClientError {
   let session_id = Ref(None)
-  let client = @protocol.mcp_client(client_name="mcpx", client_version="0.1.2")
+  let client = @protocol.mcp_client(client_name="mcpx", client_version="0.1.3")
   initialize(fetch, endpoint, client, session_id)
   let call = client.tool_call_request(name=tool_name, arguments~)
   let call_response = send_json(fetch, endpoint, session_id, call.message)
