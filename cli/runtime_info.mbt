@@ -127,10 +127,18 @@ fn truncate_chars(text : String, max_chars : Int) -> String {
   if chars.length() <= max_chars {
     return text
   }
+  if max_chars <= 3 {
+    let out = StringBuilder::new(size_hint=max_chars)
+    for _ in 0..<max_chars {
+      out.write_char('.')
+    }
+    return out.to_string()
+  }
   let out = StringBuilder::new(size_hint=max_chars)
-  for i in 0..<max_chars {
+  for i in 0..<(max_chars - 3) {
     out.write_char(chars[i])
   }
+  out.write_string("...")
   out.to_string()
 }
 

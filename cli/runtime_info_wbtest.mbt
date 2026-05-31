@@ -143,7 +143,7 @@ async test "mcpx runtime: info without target lists configured servers" {
     content=(
       #|Servers
       #|  github                 GitHub Issues, PRs, and code search
-      #|  very-long-server-name  This description is intentionally longer than sixty characte
+      #|  very-long-server-name  This description is intentionally longer than sixty chara...
     ),
   )
 }
