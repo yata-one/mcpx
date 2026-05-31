@@ -81,13 +81,57 @@ fn run_info_servers(home : String, config_home : String?) -> String {
     return "No servers configured.\nConfig: " + paths.servers_config
   }
   let lines = ["Servers"]
+  let name_width = max_server_name_width(config.servers)
   for name, server in config.servers {
     match first_description_line(server.description) {
-      Some(description) => lines.push("  " + name + "  " + description)
+      Some(description) =>
+        lines.push(
+          "  " +
+          pad_right(name, name_width) +
+          "  " +
+          truncate_chars(description, 60),
+        )
       None => lines.push("  " + name)
     }
   }
   lines.join("\n")
+}
+
+///|
+fn max_server_name_width(servers : Map[String, @config.McpServerConfig]) -> Int {
+  let mut width = 0
+  for name, _ in servers {
+    if name.length() > width {
+      width = name.length()
+    }
+  }
+  width
+}
+
+///|
+fn pad_right(text : String, width : Int) -> String {
+  if text.length() >= width {
+    return text
+  }
+  let out = StringBuilder::new(size_hint=width)
+  out.write_string(text)
+  for _ in text.length()..<width {
+    out.write_char(' ')
+  }
+  out.to_string()
+}
+
+///|
+fn truncate_chars(text : String, max_chars : Int) -> String {
+  let chars = text.to_array()
+  if chars.length() <= max_chars {
+    return text
+  }
+  let out = StringBuilder::new(size_hint=max_chars)
+  for i in 0..<max_chars {
+    out.write_char(chars[i])
+  }
+  out.to_string()
 }
 
 ///|
