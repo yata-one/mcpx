@@ -21,27 +21,23 @@ pub fn mcpx_help_text() -> String {
     #|
     #|Workflow:
     #|  0. Search MCP Server (if needed): mcpx search <pattern>
-    #|  1. Understand how to use server:  mcpx info <server>
-    #|  2. Understand how to use tool:    mcpx info <server> <tool>
-    #|  3. Call tool:                     mcpx call <server> <tool> [args]
+    #|  1. Understand how to use server:  mcpx info <server|url>
+    #|  2. Understand how to use tool:    mcpx info <server|url> <tool>
+    #|  3. Call tool:                     mcpx call <server|url> <tool> [arguments-json]
     #|
     #|Usage:
     #|  mcpx
     #|  mcpx --help
     #|  mcpx --version
-    #|
     #|  mcpx info
-    #|  mcpx info <server|mcp-url>
-    #|  mcpx info <server|mcp-url> <tool>
+    #|  mcpx info <server|url> [tool]
     #|  mcpx search <pattern>
-    #|  mcpx call <server|mcp-url> <tool> [arguments-json]
-    #|
-    #|  mcpx auth <server>
-    #|  mcpx auth <server> --no-browser --json
+    #|  mcpx call <server|url> <tool> [arguments-json]
+    #|  mcpx auth <server> [--no-browser] [--json]
     #|  mcpx auth <server> --code <code> --state <state>
+    #|  mcpx daemon
+    #|  mcpx daemon <status|stop>
     #|
-    #|  mcpx daemon status
-    #|  mcpx daemon stop
   )
 }
 
@@ -51,8 +47,7 @@ pub fn call_help_text() -> String {
     #|mcpx call
     #|
     #|Usage:
-    #|  mcpx call <server|mcp-url> <tool>
-    #|  mcpx call <server|mcp-url> <tool> <arguments-json>
+    #|  mcpx call <server|url> <tool> [arguments-json]
     #|
     #|Examples:
     #|  mcpx call github search '{"q":"moonbit"}'
@@ -76,8 +71,7 @@ pub fn auth_help_text() -> String {
     #|mcpx auth
     #|
     #|Usage:
-    #|  mcpx auth <server>
-    #|  mcpx auth <server> --no-browser --json
+    #|  mcpx auth <server> [--no-browser] [--json]
     #|  mcpx auth <server> --code <code> --state <state>
   )
 }
@@ -88,8 +82,8 @@ pub fn daemon_help_text() -> String {
     #|mcpx daemon
     #|
     #|Usage:
-    #|  mcpx daemon status
-    #|  mcpx daemon stop
+    #|  mcpx daemon
+    #|  mcpx daemon <status|stop>
   )
 }
 

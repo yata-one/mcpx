@@ -6,7 +6,7 @@ test "mcpx runtime: no args and --help return help text" {
     no_args.contains("mcpx — execute MCP tools via CLI"),
     content="true",
   )
-  inspect(no_args.contains("mcpx info <server|mcp-url> <tool>"), content="true")
+  inspect(no_args.contains("mcpx info <server|url> [tool]"), content="true")
   inspect(help == no_args, content="true")
 }
 
@@ -22,7 +22,7 @@ test "mcpx runtime: --version returns text version" {
 test "mcpx runtime: bare commands return command-specific help" {
   inspect(
     run_mcpx_args(["call"], home="/tmp/mcpx-runtime-test/home").contains(
-      "mcpx call <server|mcp-url> <tool>",
+      "mcpx call <server|url> <tool>",
     ),
     content="true",
   )
@@ -34,13 +34,13 @@ test "mcpx runtime: bare commands return command-specific help" {
   )
   inspect(
     run_mcpx_args(["auth"], home="/tmp/mcpx-runtime-test/home").contains(
-      "mcpx auth <server> --no-browser --json",
+      "mcpx auth <server> [--no-browser] [--json]",
     ),
     content="true",
   )
   inspect(
     run_mcpx_args(["daemon"], home="/tmp/mcpx-runtime-test/home").contains(
-      "mcpx daemon status",
+      "mcpx daemon <status|stop>",
     ),
     content="true",
   )

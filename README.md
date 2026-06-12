@@ -21,19 +21,14 @@ nix run github:yata-one/mcpx -- --help
 mcpx
 mcpx --help
 mcpx --version
-
 mcpx info
-mcpx info <server|mcp-url>
-mcpx info <server|mcp-url> <tool>
+mcpx info <server|url> [tool]
 mcpx search <pattern>
-mcpx call <server|mcp-url> <tool> [arguments-json]
-
-mcpx auth <server>
-mcpx auth <server> --no-browser --json
+mcpx call <server|url> <tool> [arguments-json]
+mcpx auth <server> [--no-browser] [--json]
 mcpx auth <server> --code <code> --state <state>
-
-mcpx daemon status
-mcpx daemon stop
+mcpx daemon
+mcpx daemon <status|stop>
 ```
 
 Direct remote MCP URL, no config:

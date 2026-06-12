@@ -141,7 +141,7 @@ async test "mcpx runtime: info without target lists configured servers" {
   inspect(
     run_mcpx_args_async(["info"], home~),
     content=(
-      #|Servers
+      #|Servers:
       #|  github                 GitHub Issues, PRs, and code search
       #|  very-long-server-name  This description is intentionally longer than sixty chara...
     ),

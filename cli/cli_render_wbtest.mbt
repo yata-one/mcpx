@@ -7,10 +7,7 @@ test "cli render: help text is human-readable" {
         help.contains("mcpx — execute MCP tools via CLI"),
         content="true",
       )
-      inspect(
-        help.contains("mcpx info <server|mcp-url> <tool>"),
-        content="true",
-      )
+      inspect(help.contains("mcpx info <server|url> [tool]"), content="true")
       inspect(help.contains("mcpx search <pattern>"), content="true")
     }
     Err(error) => @debug.debug_inspect(error, content="UNREACHABLE")
@@ -37,8 +34,7 @@ test "cli render: command-specific help text" {
       #|mcpx call
       #|
       #|Usage:
-      #|  mcpx call <server|mcp-url> <tool>
-      #|  mcpx call <server|mcp-url> <tool> <arguments-json>
+      #|  mcpx call <server|url> <tool> [arguments-json]
       #|
       #|Examples:
       #|  mcpx call github search '{"q":"moonbit"}'
@@ -60,8 +56,7 @@ test "cli render: command-specific help text" {
       #|mcpx auth
       #|
       #|Usage:
-      #|  mcpx auth <server>
-      #|  mcpx auth <server> --no-browser --json
+      #|  mcpx auth <server> [--no-browser] [--json]
       #|  mcpx auth <server> --code <code> --state <state>
     ),
   )
@@ -71,8 +66,8 @@ test "cli render: command-specific help text" {
       #|mcpx daemon
       #|
       #|Usage:
-      #|  mcpx daemon status
-      #|  mcpx daemon stop
+      #|  mcpx daemon
+      #|  mcpx daemon <status|stop>
     ),
   )
 }
