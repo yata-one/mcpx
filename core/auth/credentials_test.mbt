@@ -1,4 +1,36 @@
 ///|
+fn alphaxiv_entry(
+  client_id : String,
+  access_token : String,
+  updated_at : String,
+) -> CredentialsEntry {
+  credentials_entry(
+    server_name="alphaxiv",
+    server_url=Some("https://api.alphaxiv.org/mcp/v1"),
+    client_id=Some(client_id),
+    access_token~,
+    updated_at~,
+  )
+}
+
+///|
+fn test_pending_flow(
+  server_name : String,
+  client_id : String,
+  state : String,
+) -> PendingOAuthFlow {
+  pending_oauth_flow(
+    server_name~,
+    client_id~,
+    token_endpoint="https://auth.example/token",
+    redirect_uri="http://127.0.0.1:8765/callback",
+    code_verifier=client_id + "-verifier",
+    state~,
+    created_at="1000",
+  )
+}
+
+///|
 test "credentials: empty file encodes version and entries" {
   inspect(
     empty_credentials_file().to_json().stringify(),
@@ -102,6 +134,59 @@ test "credentials: finds entry by server name and exact url before fallback" {
 }
 
 ///|
+test "credentials: finds latest matching entry with long decimal updatedAt" {
+  let file = put_credentials_entry(
+    empty_credentials_file(),
+    "alphaxiv|old-client",
+    alphaxiv_entry("old-client", "old-token", "999999999999999999999999999998"),
+  )
+  let file = put_credentials_entry(
+    file,
+    "alphaxiv|new-client",
+    alphaxiv_entry("new-client", "new-token", "999999999999999999999999999999"),
+  )
+  let token = match
+    find_credentials_entry(
+      file,
+      server_name="alphaxiv",
+      server_url=Some("https://api.alphaxiv.org/mcp/v1"),
+    ) {
+    Some(entry) => entry.tokens.access_token
+    None => "missing"
+  }
+  inspect(token, content="new-token")
+}
+
+///|
+test "credentials: replacing server entry prunes older server credentials" {
+  let file = put_credentials_entry(
+    empty_credentials_file(),
+    "github|client-1",
+    credentials_entry(
+      server_name="github",
+      server_url=Some("https://mcp.github.com/mcp"),
+      client_id=Some("client-1"),
+      access_token="github-token",
+      updated_at="100",
+    ),
+  )
+  let file = put_credentials_entry(
+    file,
+    "alphaxiv|old-client",
+    alphaxiv_entry("old-client", "old-token", "100"),
+  )
+  let next = replace_server_credentials_entry(
+    file,
+    "alphaxiv|new-client",
+    alphaxiv_entry("new-client", "new-token", "200"),
+  )
+  inspect(next.entries.length(), content="2")
+  inspect(next.entries.contains("alphaxiv|old-client"), content="false")
+  inspect(next.entries.contains("alphaxiv|new-client"), content="true")
+  inspect(next.entries.contains("github|client-1"), content="true")
+}
+
+///|
 test "credentials: stores pending OAuth flow by server and state" {
   let file = put_pending_oauth_flow(
     empty_credentials_file(),
@@ -138,18 +223,30 @@ test "credentials: stores pending OAuth flow by server and state" {
 }
 
 ///|
+test "credentials: replacing server pending OAuth flow prunes older server flows" {
+  let file = put_pending_oauth_flow(
+    empty_credentials_file(),
+    test_pending_flow("github", "github-client", "github-state"),
+  )
+  let file = put_pending_oauth_flow(
+    file,
+    test_pending_flow("alphaxiv", "old-client", "old-state"),
+  )
+  let next = replace_server_pending_oauth_flow(
+    file,
+    test_pending_flow("alphaxiv", "new-client", "new-state"),
+  )
+  inspect(next.pending_oauth.length(), content="2")
+  inspect(next.pending_oauth.contains("alphaxiv|old-state"), content="false")
+  inspect(next.pending_oauth.contains("alphaxiv|new-state"), content="true")
+  inspect(next.pending_oauth.contains("github|github-state"), content="true")
+}
+
+///|
 test "credentials: removes pending OAuth flow after exchange" {
   let file = put_pending_oauth_flow(
     empty_credentials_file(),
-    pending_oauth_flow(
-      server_name="github",
-      client_id="client-1",
-      token_endpoint="https://auth.example/token",
-      redirect_uri="http://127.0.0.1:8765/callback",
-      code_verifier="verifier-1",
-      state="state-1",
-      created_at="1000",
-    ),
+    test_pending_flow("github", "client-1", "state-1"),
   )
   let next = remove_pending_oauth_flow(
     file,

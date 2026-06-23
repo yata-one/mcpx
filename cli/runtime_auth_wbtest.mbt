@@ -1,9 +1,12 @@
 ///|
 #cfg(all(target="native", not(platform="windows")))
-async test "mcpx runtime: auth no-browser json starts static-client OAuth without verifier leak" {
+async test "mcpx runtime: auth no-browser starts OAuth and replaces old pending flow" {
   let home = "/tmp/mcpx-runtime-auth-static-test/home"
   let paths = @app_paths.mcpx_app_paths(home)
   @fs.remove_file(paths.servers_config) catch {
+    _ => ()
+  }
+  @fs.remove_file(paths.credentials_file) catch {
     _ => ()
   }
   @async.with_task_group(group => {
@@ -11,6 +14,22 @@ async test "mcpx runtime: auth no-browser json starts static-client OAuth withou
     defer server.close()
     let port = server.addr.port()
     let metadata_url = "http://localhost:\{port}/metadata"
+    @storage.save_credentials_file(
+      paths.credentials_file,
+      @auth.put_pending_oauth_flow(
+        @auth.empty_credentials_file(),
+        @auth.pending_oauth_flow(
+          server_name="github",
+          server_url=Some("http://localhost:\{port}/mcp"),
+          client_id="old-client",
+          token_endpoint="http://localhost:\{port}/token",
+          redirect_uri="http://127.0.0.1:8765/callback",
+          code_verifier="old-verifier",
+          state="old-state",
+          created_at="100",
+        ),
+      ),
+    )
     @storage.save_mcpx_config_file(
       paths.servers_config,
       @config.put_server_config(
@@ -63,6 +82,11 @@ async test "mcpx runtime: auth no-browser json starts static-client OAuth withou
     let state = json_string_field(result, "state")
     let credentials = @storage.load_credentials_file_or_empty(
       paths.credentials_file,
+    )
+    inspect(credentials.pending_oauth.length(), content="1")
+    inspect(
+      credentials.pending_oauth.contains("github|old-state"),
+      content="false",
     )
     let pending = @auth.find_pending_oauth_flow(
       credentials,
@@ -394,7 +418,30 @@ async test "mcpx runtime: auth code exchange stores credentials and removes pend
     @storage.save_credentials_file(
       paths.credentials_file,
       @auth.put_pending_oauth_flow(
-        @auth.empty_credentials_file(),
+        @auth.put_pending_oauth_flow(
+          @auth.put_credentials_entry(
+            @auth.empty_credentials_file(),
+            "github|old-client",
+            @auth.credentials_entry(
+              server_name="github",
+              server_url=Some("http://localhost:\{port}/mcp"),
+              client_id=Some("old-client"),
+              access_token="old-token",
+              refresh_token=Some("old-refresh-token"),
+              updated_at="100",
+            ),
+          ),
+          @auth.pending_oauth_flow(
+            server_name="github",
+            server_url=Some("http://localhost:\{port}/mcp"),
+            client_id="old-client",
+            token_endpoint~,
+            redirect_uri="http://127.0.0.1:8765/callback",
+            code_verifier="old-verifier",
+            state="old-state",
+            created_at="1000",
+          ),
+        ),
         @auth.pending_oauth_flow(
           server_name="github",
           server_url=Some("http://localhost:\{port}/mcp"),
@@ -443,6 +490,9 @@ async test "mcpx runtime: auth code exchange stores credentials and removes pend
       credentials.to_json().stringify().contains("\"pendingOAuth\""),
       content="false",
     )
+    inspect(credentials.entries.length(), content="1")
+    inspect(credentials.entries.contains("github|old-client"), content="false")
+    inspect(credentials.entries.contains("github|client-1"), content="true")
     let entry = @auth.find_credentials_entry(
       credentials,
       server_name="github",
