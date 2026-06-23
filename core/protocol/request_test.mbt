@@ -1,9 +1,9 @@
 ///|
 test "mcp client request: builds initialize notification list and call" {
   inspect(
-    mcp_initialize_request(id=1, client_name="mcpx", client_version="0.1.3").stringify(),
+    mcp_initialize_request(id=1, client_name="mcpx", client_version="0.1.4").stringify(),
     content=(
-      #|{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"mcpx","version":"0.1.3"}}}
+      #|{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"mcpx","version":"0.1.4"}}}
     ),
   )
   inspect(

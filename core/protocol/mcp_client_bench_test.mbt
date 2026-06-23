@@ -2,7 +2,7 @@
 test "bench mcp_client initialize/list/call request sequence" (it : @bench.T) {
   let arguments = Json::object({ "q": Json::string("moonbit") })
   it.bench(() => {
-    let client = mcp_client(client_name="mcpx", client_version="0.1.3")
+    let client = mcp_client(client_name="mcpx", client_version="0.1.4")
     let init = client.initialize_request()
     let initialized = client.initialized_notification()
     let list = client.tools_list_request()

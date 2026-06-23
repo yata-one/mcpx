@@ -12,7 +12,7 @@ Usage:
 
 Examples:
   curl -fsSL https://raw.githubusercontent.com/yata-one/mcpx/main/install.sh | sh
-  curl -fsSL https://raw.githubusercontent.com/yata-one/mcpx/main/install.sh | sh -s -- --version v0.1.3
+  curl -fsSL https://raw.githubusercontent.com/yata-one/mcpx/main/install.sh | sh -s -- --version v0.1.4
   curl -fsSL https://raw.githubusercontent.com/yata-one/mcpx/main/install.sh | sh -s -- --bin-dir /usr/local/bin
 USAGE
 }
