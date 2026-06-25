@@ -21,11 +21,11 @@
     "moon-registry": {
       "flake": false,
       "locked": {
-        "lastModified": 1782405624,
-        "narHash": "sha256-N9icUTpyDvqyv63f6zaIwbAkiFOfBADO8DN82KUmXhg=",
+        "lastModified": 1782407336,
+        "narHash": "sha256-z8JdFZ9xgcsWZdV6PD/2LjiScNhv/Z3XqhhyTz4Wm0M=",
         "ref": "refs/heads/main",
-        "rev": "4518cd51194dfa5298e4204a3e561a38f162397c",
-        "revCount": 10075,
+        "rev": "4356d4dd3b06bb1b06ee1a3f00751aed3de405f5",
+        "revCount": 10077,
         "type": "git",
         "url": "https://mooncakes.io/git/index"
       },
@@ -87,11 +87,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1770380644,
-        "narHash": "sha256-P7dWMHRUWG5m4G+06jDyThXO7kwSk46C1kgjEWcybkE=",
+        "lastModified": 1782175435,
+        "narHash": "sha256-EMzXKmnOtBQ2MnvpiNOm7E+kOMvdPrIKaeg52Tip2Uk=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "ae67888ff7ef9dff69b3cf0cc0fbfbcd3a722abe",
+        "rev": "89570f24e97e614aa34aa9ab1c927b6578a43775",
         "type": "github"
       },
       "original": {

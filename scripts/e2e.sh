@@ -280,7 +280,11 @@ except subprocess.TimeoutExpired:
     raise SystemExit("mcpx call did not exit")
 
 if rc != 0:
-    raise SystemExit(f"mcpx call exited with {rc}")
+    stdout = p.stdout.read().decode("utf-8", errors="replace")
+    stderr = p.stderr.read().decode("utf-8", errors="replace")
+    raise SystemExit(
+        f"mcpx call exited with {rc}\nstdout: {stdout!r}\nstderr: {stderr!r}"
+    )
 
 try:
     os.write(p.stdin.fileno(), b"x")

@@ -8,6 +8,17 @@ pub suberror McpxDaemonError {
 } derive(Debug)
 
 ///|
+pub fn describe_mcpx_daemon_error(error : McpxDaemonError) -> String {
+  match error {
+    Unavailable => "daemon unavailable"
+    ConnectFailed(message) => "connect failed: " + message
+    InvalidResponse(message) => "invalid response: " + message
+    RemoteError(message) => "remote error: " + message
+    Stdio(message) => "stdio error: " + message
+  }
+}
+
+///|
 priv suberror McpxDaemonStop
 
 ///|
@@ -119,16 +130,18 @@ pub async fn ensure_mcpx_daemon_running(
 ///|
 async fn start_daemon_process() -> Unit raise McpxDaemonError {
   let exe = @sys.get_cli_args().get(0).unwrap_or("mcpx")
-  let null_path = daemon_null_device_path()
-  let stdin = @process.redirect_from_file(null_path) catch {
+  let (stdin, stdin_writer) = @process.write_to_process() catch {
     error => raise McpxDaemonError::ConnectFailed(error.to_string())
   }
-  let stdout = @process.redirect_to_file(null_path) catch {
+  defer stdin_writer.close()
+  let (stdout_reader, stdout) = @process.read_from_process() catch {
     error => raise McpxDaemonError::ConnectFailed(error.to_string())
   }
-  let stderr = @process.redirect_to_file(null_path) catch {
+  defer stdout_reader.close()
+  let (stderr_reader, stderr) = @process.read_from_process() catch {
     error => raise McpxDaemonError::ConnectFailed(error.to_string())
   }
+  defer stderr_reader.close()
   ignore(
     @process.spawn_orphan(
       exe,
@@ -602,16 +615,4 @@ async fn wait_for_daemon_state_removed(
     elapsed = elapsed + 50
   }
   read_mcpx_daemon_port(home~, config_home~) is None
-}
-
-///|
-#cfg(platform="windows")
-fn daemon_null_device_path() -> String {
-  "NUL"
-}
-
-///|
-#cfg(not(platform="windows"))
-fn daemon_null_device_path() -> String {
-  "/dev/null"
 }

@@ -133,7 +133,10 @@ async fn run_call_daemon(
     tool_name=command.tool,
     arguments~,
   ) catch {
-    _ => return error_result("mcp daemon error")
+    error =>
+      return error_result(
+        "mcp daemon error: " + @mcpx_daemon.describe_mcpx_daemon_error(error),
+      )
   }
   ok_result(result)
 }
