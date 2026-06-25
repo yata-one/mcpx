@@ -1,12 +1,12 @@
 import {
-  "moonbitlang/core/json" @json,
-  "yata-one/mcpx/core/auth" @auth,
-  "yata-one/mcpx/core/host" @host,
+  "moonbitlang/core/json",
+  "yata-one/mcpx/core/auth",
+  "yata-one/mcpx/core/host",
   "yata-one/mcpx/core/protocol" @mcp_client,
 }
 
 import {
-  "moonbitlang/core/bench" @bench,
+  "moonbitlang/core/bench",
 } for "test"
 
 options(

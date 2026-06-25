@@ -1,12 +1,12 @@
 import {
-  "moonbitlang/core/json" @json,
-  "moonbitlang/x/fs" @fs,
-  "yata-one/mcpx/core/auth" @auth,
-  "yata-one/mcpx/core/config" @config,
+  "moonbitlang/core/json",
+  "moonbitlang/x/fs",
+  "yata-one/mcpx/core/auth",
+  "yata-one/mcpx/core/config",
 }
 
 import {
-  "moonbitlang/x/fs" @fs,
+  "moonbitlang/x/fs",
 } for "test"
 
 supported_targets = "native+llvm"

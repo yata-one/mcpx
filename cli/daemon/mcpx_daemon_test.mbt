@@ -230,13 +230,18 @@ async test "mcpx daemon: stop while concurrent call_tool is in-flight" {
     )
     inspect(first.stringify(), content="{\"call\":1}")
     inspect(daemon_stop(home~), content="true")
-    let call_after : Result[Json, _] = try? daemon_call_tool(
-      home~,
-      key="local",
-      server~,
-      tool_name="count",
-      arguments=Json::object({}),
-    )
+    let call_after : Result[Json, _] = try
+      daemon_call_tool(
+        home~,
+        key="local",
+        server~,
+        tool_name="count",
+        arguments=Json::object({}),
+      )
+      |> Ok
+    catch {
+      e => Err(e)
+    }
     match call_after {
       Err(_) => inspect(true, content="true")
       Ok(_) => inspect(false, content="true")
@@ -256,7 +261,9 @@ async test "mcpx daemon: stop when not running returns false" {
   @fs.remove_file(mcpx_daemon_state_path(home~)) catch {
     _ => ()
   }
-  let result : Result[Bool, _] = try? daemon_stop(home~)
+  let result : Result[Bool, _] = try daemon_stop(home~) |> Ok catch {
+    e => Err(e)
+  }
   match result {
     Err(_) => inspect(true, content="true")
     Ok(_) => inspect(false, content="true")
@@ -281,7 +288,9 @@ async test "mcpx daemon: double stop" {
       daemon_task.cancel()
     }
     inspect(exited, content="true")
-    let second_stop : Result[Bool, _] = try? daemon_stop(home~)
+    let second_stop : Result[Bool, _] = try daemon_stop(home~) |> Ok catch {
+      e => Err(e)
+    }
     match second_stop {
       Err(_) => inspect(true, content="true")
       Ok(_) => inspect(false, content="true")

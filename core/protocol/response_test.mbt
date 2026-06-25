@@ -68,7 +68,9 @@ test "mcp client response: rejects id mismatch and surfaces json-rpc errors" {
     "result": Json::object({}),
   })
   @debug.debug_inspect(
-    try? decode_mcp_result(mismatch, expected_id=1),
+    try decode_mcp_result(mismatch, expected_id=1) |> Ok catch {
+      e => Err(e)
+    },
     content=(
       #|Err(InvalidResponse("unexpected response id"))
     ),
@@ -82,7 +84,9 @@ test "mcp client response: rejects id mismatch and surfaces json-rpc errors" {
     }),
   })
   @debug.debug_inspect(
-    try? decode_mcp_result(remote_error, expected_id=1),
+    try decode_mcp_result(remote_error, expected_id=1) |> Ok catch {
+      e => Err(e)
+    },
     content=(
       #|Err(RemoteError(-32601, "method not found"))
     ),

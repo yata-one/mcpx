@@ -7,6 +7,7 @@ target/
 .mooncakes/
 .moonagent/
 .moon_tmp2/
+pkg.generated.mbti
 
 # codex
 CONTINUITY.md

@@ -336,7 +336,7 @@ fn compare_char(left : Char, right : Char) -> Int {
 }
 
 ///|
-pub impl ToJson for CredentialsFile with to_json(self) {
+pub impl ToJson for CredentialsFile with fn to_json(self) {
   let obj = Map([])
   obj["entries"] = credentials_entries_to_json(self.entries)
   obj["version"] = json_int(self.version)
@@ -347,7 +347,7 @@ pub impl ToJson for CredentialsFile with to_json(self) {
 }
 
 ///|
-pub impl ToJson for CredentialsEntry with to_json(self) {
+pub impl ToJson for CredentialsEntry with fn to_json(self) {
   let obj = Map([])
   obj["serverName"] = Json::string(self.server_name)
   match self.server_url {
@@ -364,12 +364,12 @@ pub impl ToJson for CredentialsEntry with to_json(self) {
 }
 
 ///|
-pub impl ToJson for OAuthClientInfo with to_json(self) {
+pub impl ToJson for OAuthClientInfo with fn to_json(self) {
   Json::object({ "client_id": Json::string(self.client_id) })
 }
 
 ///|
-pub impl ToJson for OAuthClientSecretInfo with to_json(self) {
+pub impl ToJson for OAuthClientSecretInfo with fn to_json(self) {
   let obj = Map([])
   obj["client_id"] = Json::string(self.client_id)
   match self.client_secret {
@@ -380,7 +380,7 @@ pub impl ToJson for OAuthClientSecretInfo with to_json(self) {
 }
 
 ///|
-pub impl ToJson for PendingOAuthFlow with to_json(self) {
+pub impl ToJson for PendingOAuthFlow with fn to_json(self) {
   let obj = Map([])
   obj["serverName"] = Json::string(self.server_name)
   match self.server_url {

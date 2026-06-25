@@ -1,8 +1,8 @@
 import {
-  "moonbitlang/core/json" @json,
+  "moonbitlang/core/json",
 }
 
 import {
-  "moonbitlang/core/bench" @bench,
-  "moonbitlang/core/debug" @debug,
+  "moonbitlang/core/bench",
+  "moonbitlang/core/debug",
 } for "test"

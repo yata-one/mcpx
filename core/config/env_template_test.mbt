@@ -8,10 +8,11 @@ test "env template: resolves ${VAR} from provided env" {
 
 ///|
 test "env template: missing var raises in strict mode" {
-  let result : Result[String, EnvTemplateError] = try? resolve_env_template(
-    "Bearer ${TOKEN}",
-    {},
-  )
+  let result : Result[String, EnvTemplateError] = try
+    resolve_env_template("Bearer ${TOKEN}", {}) |> Ok
+  catch {
+    e => Err(e)
+  }
   @debug.debug_inspect(result, content="Err(MissingEnvVar(\"TOKEN\"))")
 }
 
@@ -25,10 +26,11 @@ test "env template: non-strict missing var becomes empty" {
 
 ///|
 test "env template: rejects fallback syntax because only ${VAR} is supported" {
-  let result : Result[String, EnvTemplateError] = try? resolve_env_template(
-    "${TOKEN:-fallback}",
-    { "TOKEN": "abc" },
-  )
+  let result : Result[String, EnvTemplateError] = try
+    resolve_env_template("${TOKEN:-fallback}", { "TOKEN": "abc" }) |> Ok
+  catch {
+    e => Err(e)
+  }
   @debug.debug_inspect(
     result,
     content="Err(InvalidEnvVarSyntax(\"${TOKEN:-fallback}\"))",
@@ -37,9 +39,10 @@ test "env template: rejects fallback syntax because only ${VAR} is supported" {
 
 ///|
 test "env template: rejects empty placeholder" {
-  let result : Result[String, EnvTemplateError] = try? resolve_env_template(
-    "${}",
-    {},
-  )
+  let result : Result[String, EnvTemplateError] = try
+    resolve_env_template("${}", {}) |> Ok
+  catch {
+    e => Err(e)
+  }
   @debug.debug_inspect(result, content="Err(InvalidEnvVarSyntax(\"${}\"))")
 }

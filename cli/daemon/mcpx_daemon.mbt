@@ -85,7 +85,11 @@ pub async fn run_mcpx_daemon_foreground(
 ///|
 pub async fn daemon_ping(home~ : String, config_home? : String? = None) -> Bool {
   let req = Json::object({ "op": Json::string("ping") })
-  let result : Result[Json, _] = try? request(home~, config_home~, req)
+  let result : Result[Json, _] = try
+    request(home~, config_home~, req) |> Ok
+  catch {
+    e => Err(e)
+  }
   match result {
     Ok(Object(obj)) => obj.get("ok") == Some(Json::boolean(true))
     _ => false
@@ -256,16 +260,21 @@ async fn handle_call_tool(
     Ok(value) => value
     Err(message) => return error_response(message)
   }
-  let result : Result[Json, _] = try? ({
-    let entry = pool.entry(group, key, server)
-    entry.val.mutex.acquire()
-    entry.val.mark_used()
-    defer {
+  let result : Result[Json, _] = try
+    ({
+      let entry = pool.entry(group, key, server)
+      entry.val.mutex.acquire()
       entry.val.mark_used()
-      entry.val.mutex.release()
-    }
-    entry.val.client.call_tool(tool_name~, arguments~)
-  })
+      defer {
+        entry.val.mark_used()
+        entry.val.mutex.release()
+      }
+      entry.val.client.call_tool(tool_name~, arguments~)
+    })
+    |> Ok
+  catch {
+    error => Err(error)
+  }
   match result {
     Ok(value) => ok_response(value)
     Err(error) => error_response(error.to_string())
@@ -283,16 +292,21 @@ async fn handle_list_tools(
     Ok(value) => value
     Err(message) => return error_response(message)
   }
-  let result : Result[Array[@mcp_client.McpToolInfo], _] = try? ({
-    let entry = pool.entry(group, key, server)
-    entry.val.mutex.acquire()
-    entry.val.mark_used()
-    defer {
+  let result : Result[Array[@mcp_client.McpToolInfo], _] = try
+    ({
+      let entry = pool.entry(group, key, server)
+      entry.val.mutex.acquire()
       entry.val.mark_used()
-      entry.val.mutex.release()
-    }
-    entry.val.client.list_tools()
-  })
+      defer {
+        entry.val.mark_used()
+        entry.val.mutex.release()
+      }
+      entry.val.client.list_tools()
+    })
+    |> Ok
+  catch {
+    error => Err(error)
+  }
   match result {
     Ok(tools) =>
       ok_response(
@@ -379,7 +393,7 @@ async fn create_entry(
     client,
     mutex: @async.Semaphore(1),
     idle_timeout_ms: server_idle_timeout_ms(server),
-    last_used_ms: @async.now(),
+    last_used_ms: @env.now().reinterpret_as_int64(),
   }
 }
 
@@ -395,14 +409,16 @@ fn server_idle_timeout_ms(server : @config.McpServerConfig) -> Int? {
 ///|
 fn DaemonEntry::is_idle_expired(self : DaemonEntry) -> Bool {
   match self.idle_timeout_ms {
-    Some(timeout) => @async.now() - self.last_used_ms >= timeout.to_int64()
+    Some(timeout) =>
+      @env.now().reinterpret_as_int64() - self.last_used_ms >=
+      timeout.to_int64()
     None => false
   }
 }
 
 ///|
 fn DaemonEntry::mark_used(self : DaemonEntry) -> Unit {
-  self.last_used_ms = @async.now()
+  self.last_used_ms = @env.now().reinterpret_as_int64()
 }
 
 ///|

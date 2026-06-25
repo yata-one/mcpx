@@ -6,7 +6,7 @@ pub struct SearchResult {
 } derive(Debug, Eq, Hash)
 
 ///|
-impl Compare for SearchResult with compare(self, other) {
+impl Compare for SearchResult with fn compare(self, other) {
   if self.score != other.score {
     other.score - self.score
   } else {

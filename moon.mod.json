@@ -2,8 +2,8 @@
   "name": "yata-one/mcpx",
   "version": "0.1.4",
   "deps": {
-    "moonbitlang/x": "0.4.43",
-    "moonbitlang/async": "0.19.0"
+    "moonbitlang/x": "0.4.46",
+    "moonbitlang/async": "0.20.0"
   },
   "readme": "README.mbt.md",
   "repository": "",
