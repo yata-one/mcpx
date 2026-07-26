@@ -65,6 +65,14 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
 
+        if method == "server/discover":
+            send_json({
+                "jsonrpc": "2.0",
+                "id": msg.get("id", 1),
+                "error": {"code": -32601, "message": "Method not found"},
+            }, code=400)
+            return
+
         if method == "initialize":
             send_json({
                 "jsonrpc": "2.0",
