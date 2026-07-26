@@ -10,6 +10,6 @@ test "cli error: formats unknown command" {
 test "cli error: formats invalid target" {
   inspect(
     format_mcpx_parse_error(CliParseError::InvalidTarget("github")),
-    content="invalid target: github (expected server or mcp-url)",
+    content="invalid target: github (expected server or url)",
   )
 }

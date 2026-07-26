@@ -68,7 +68,9 @@ pub async fn wait_for_oauth_callback(
         })
       })
       group.spawn_bg(no_wait=true, () => trigger(redirect_uri) catch { _ => () })
-      try? wait_for_callback_result(captured, timeout_ms~)
+      try wait_for_callback_result(captured, timeout_ms~) |> Ok catch {
+        e => Err(e)
+      }
     },
   ) catch {
     _ => Err(OAuthCallbackError::Timeout)
@@ -128,13 +130,13 @@ async fn wait_for_callback_result(
   captured : Ref[Result[OAuthCallbackCode, OAuthCallbackError]?],
   timeout_ms~ : Int,
 ) -> OAuthCallbackCode raise OAuthCallbackError {
-  let deadline = @async.now() + timeout_ms.to_int64()
+  let deadline = @sys.now().reinterpret_as_int64() + timeout_ms.to_int64()
   for ;; {
     match captured.val {
       Some(Ok(value)) => break value
       Some(Err(error)) => raise error
       None =>
-        if @async.now() >= deadline {
+        if @sys.now().reinterpret_as_int64() >= deadline {
           raise OAuthCallbackError::Timeout
         } else {
           @async.sleep(10) catch {

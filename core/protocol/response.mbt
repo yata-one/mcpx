@@ -25,7 +25,7 @@ pub fn decode_mcp_initialize_response(
             ),
           )
       }
-      let capabilities = obj.get("capabilities").unwrap_or(Json::object({}))
+      let capabilities = obj.get("capabilities").unwrap_or(Json::empty_object())
       let (server_name, server_version) = decode_server_info(
         obj.get("serverInfo"),
       )

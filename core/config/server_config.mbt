@@ -690,7 +690,7 @@ pub fn put_remote_mcp_server(
 }
 
 ///|
-pub impl ToJson for McpxConfig with to_json(self) {
+pub impl ToJson for McpxConfig with fn to_json(self) {
   let obj = Map([])
   let servers_obj = Map([], capacity=self.servers.length())
   for name, server in self.servers {
@@ -701,7 +701,7 @@ pub impl ToJson for McpxConfig with to_json(self) {
 }
 
 ///|
-pub impl ToJson for McpServerConfig with to_json(self) {
+pub impl ToJson for McpServerConfig with fn to_json(self) {
   let obj = Map([])
   obj["transport"] = Json::string(server_transport_to_string(self.transport))
   match self.url {
@@ -747,7 +747,7 @@ pub impl ToJson for McpServerConfig with to_json(self) {
 }
 
 ///|
-pub impl ToJson for ServerLifecycle with to_json(self) {
+pub impl ToJson for ServerLifecycle with fn to_json(self) {
   match (self.mode, self.idle_timeout_ms) {
     (KeepAlive, None) => Json::string("keep-alive")
     (Ephemeral, None) => Json::string("ephemeral")
@@ -764,7 +764,7 @@ pub impl ToJson for ServerLifecycle with to_json(self) {
 }
 
 ///|
-pub impl ToJson for ServerAuthConfig with to_json(self) {
+pub impl ToJson for ServerAuthConfig with fn to_json(self) {
   let obj = Map([])
   obj["type"] = Json::string(server_auth_kind_to_string(self.kind))
   match self.client_id {

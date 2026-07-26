@@ -68,7 +68,7 @@ pub fn host_http_request(
 }
 
 ///|
-pub impl ToJson for HostAction with to_json(self) {
+pub impl ToJson for HostAction with fn to_json(self) {
   match self {
     ReadTextFile(action) => action.to_json()
     WriteTextFile(action) => action.to_json()
@@ -78,7 +78,7 @@ pub impl ToJson for HostAction with to_json(self) {
 }
 
 ///|
-pub impl ToJson for HostReadTextFile with to_json(self) {
+pub impl ToJson for HostReadTextFile with fn to_json(self) {
   let obj = Map([])
   obj["kind"] = Json::string("read_text_file")
   obj["path"] = Json::string(self.path)
@@ -86,7 +86,7 @@ pub impl ToJson for HostReadTextFile with to_json(self) {
 }
 
 ///|
-pub impl ToJson for HostWriteTextFile with to_json(self) {
+pub impl ToJson for HostWriteTextFile with fn to_json(self) {
   let obj = Map([])
   obj["kind"] = Json::string("write_text_file")
   obj["path"] = Json::string(self.path)
@@ -98,7 +98,7 @@ pub impl ToJson for HostWriteTextFile with to_json(self) {
 }
 
 ///|
-pub impl ToJson for HostOpenBrowser with to_json(self) {
+pub impl ToJson for HostOpenBrowser with fn to_json(self) {
   let obj = Map([])
   obj["kind"] = Json::string("open_browser")
   obj["url"] = Json::string(self.url)
@@ -111,7 +111,7 @@ fn json_int(value : Int) -> Json {
 }
 
 ///|
-pub impl ToJson for HostHttpRequest with to_json(self) {
+pub impl ToJson for HostHttpRequest with fn to_json(self) {
   let obj = Map([])
   obj["kind"] = Json::string("http_request")
   obj["method"] = Json::string(self.http_method)

@@ -12,7 +12,7 @@ Usage:
 
 Examples:
   curl -fsSL https://raw.githubusercontent.com/yata-one/mcpx/main/install.sh | sh
-  curl -fsSL https://raw.githubusercontent.com/yata-one/mcpx/main/install.sh | sh -s -- --version v0.1.3
+  curl -fsSL https://raw.githubusercontent.com/yata-one/mcpx/main/install.sh | sh -s -- --version v0.1.4
   curl -fsSL https://raw.githubusercontent.com/yata-one/mcpx/main/install.sh | sh -s -- --bin-dir /usr/local/bin
 USAGE
 }
@@ -71,22 +71,28 @@ archive="${tmp}/${asset}"
 curl -fsSL -o "$archive" "$url"
 
 sums="${tmp}/SHA256SUMS"
-expected=""
-if curl -fsSL -o "$sums" "https://github.com/${repo}/releases/download/${version}/SHA256SUMS"; then
-  expected="$(awk -v asset="$asset" '$2==asset {print $1}' "$sums")"
+if ! curl -fsSL -o "$sums" "https://github.com/${repo}/releases/download/${version}/SHA256SUMS"; then
+  echo "failed to download SHA256SUMS for ${version}" >&2
+  exit 1
 fi
-if [ -n "${expected}" ]; then
-  if command -v sha256sum >/dev/null 2>&1; then
-    actual="$(sha256sum "$archive" | awk '{print $1}')"
-  elif command -v shasum >/dev/null 2>&1; then
-    actual="$(shasum -a 256 "$archive" | awk '{print $1}')"
-  else
-    actual=""
-  fi
-  if [ -n "${actual}" ] && [ "$expected" != "$actual" ]; then
-    echo "checksum mismatch for $asset" >&2
-    exit 1
-  fi
+expected="$(awk -v asset="$asset" '$2==asset {print $1}' "$sums")"
+if [ -z "${expected}" ]; then
+  echo "checksum for ${asset} not found in SHA256SUMS" >&2
+  exit 1
+fi
+if command -v sha256sum >/dev/null 2>&1; then
+  actual="$(sha256sum "$archive" | awk '{print $1}')"
+elif command -v shasum >/dev/null 2>&1; then
+  actual="$(shasum -a 256 "$archive" | awk '{print $1}')"
+else
+  echo "neither sha256sum nor shasum is available" >&2
+  exit 1
+fi
+if [ "${expected}" != "${actual}" ]; then
+  echo "checksum mismatch for ${asset}" >&2
+  echo "  expected: ${expected}" >&2
+  echo "  actual:   ${actual}" >&2
+  exit 1
 fi
 
 tar -xzf "$archive" -C "$tmp"

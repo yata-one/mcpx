@@ -5,7 +5,7 @@ suberror EnvTemplateError {
 } derive(Debug)
 
 ///|
-pub impl Show for EnvTemplateError with output(self, logger) {
+pub impl Show for EnvTemplateError with fn output(self, logger) {
   match self {
     MissingEnvVar(name) => {
       logger.write_string("MissingEnvVar(\"")

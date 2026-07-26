@@ -12,6 +12,7 @@ pub suberror McpStdioError {
 priv struct StdioConnection {
   reader : @process.ReadFromProcess
   _stdout_handle : &@process.ProcessOutput
+  _stderr_handle : &@process.ProcessOutput
   writer : @process.WriteToProcess
   _stdin_handle : &@process.ProcessInput
   process : @process.Process
@@ -35,7 +36,7 @@ pub async fn[X] stdio_mcp_connect(
   let conn = spawn_stdio(group, command, args, env, cwd)
   let client = @mcp_client.mcp_client(
     client_name="mcpx",
-    client_version="0.1.3",
+    client_version="0.1.4",
   )
   initialize_stdio(conn, client)
   { conn, client }
@@ -113,6 +114,17 @@ pub async fn stdio_mcp_list_tools(
 }
 
 ///|
+async fn drain_process_stderr(reader : @process.ReadFromProcess) -> Unit {
+  while true {
+    let chunk = reader.read_some() catch { _ => None }
+    match chunk {
+      Some(_) => ()
+      None => break
+    }
+  }
+}
+
+///|
 async fn initialize_stdio(
   conn : StdioConnection,
   client : @mcp_client.McpClient,
@@ -145,6 +157,9 @@ async fn[X] spawn_stdio(
   let (stdin_handle, writer) = @process.write_to_process() catch {
     err => raise McpStdioError::SpawnFailed(err.to_string())
   }
+  let (stderr_reader, stderr_handle) = @process.read_from_process() catch {
+    err => raise McpStdioError::SpawnFailed(err.to_string())
+  }
   let process = match cwd {
     None =>
       @process.spawn(
@@ -155,7 +170,7 @@ async fn[X] spawn_stdio(
         inherit_env=true,
         stdin=stdin_handle,
         stdout=stdout_handle,
-        stderr=@async_stdio.stderr,
+        stderr=stderr_handle,
       ) catch {
         err => raise McpStdioError::SpawnFailed(err.to_string())
       }
@@ -168,15 +183,17 @@ async fn[X] spawn_stdio(
         inherit_env=true,
         stdin=stdin_handle,
         stdout=stdout_handle,
-        stderr=@async_stdio.stderr,
+        stderr=stderr_handle,
         cwd=dir.to_string_view(),
       ) catch {
         err => raise McpStdioError::SpawnFailed(err.to_string())
       }
   }
+  group.spawn_bg(no_wait=true, () => drain_process_stderr(stderr_reader))
   {
     reader,
     _stdout_handle: stdout_handle,
+    _stderr_handle: stderr_handle,
     writer,
     _stdin_handle: stdin_handle,
     process,

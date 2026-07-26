@@ -15,7 +15,7 @@ pub fn save_credentials_file(
   path : String,
   file : @auth.CredentialsFile,
 ) -> Unit raise {
-  secure_write_private_atomic(path, file.to_json().stringify())
+  secure_write_private_atomic(path, @auth.credentials_file_json(file))
 }
 
 ///|

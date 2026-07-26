@@ -1,9 +1,9 @@
 import {
-  "moonbitlang/x/fs" @fs,
+  "moonbitlang/x/fs",
 }
 
 import {
-  "moonbitlang/x/fs" @fs,
+  "moonbitlang/x/fs",
 } for "test"
 
 supported_targets = "native+llvm"

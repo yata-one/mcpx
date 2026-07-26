@@ -8,6 +8,17 @@ pub suberror McpxDaemonError {
 } derive(Debug)
 
 ///|
+pub fn describe_mcpx_daemon_error(error : McpxDaemonError) -> String {
+  match error {
+    Unavailable => "daemon unavailable"
+    ConnectFailed(message) => "connect failed: " + message
+    InvalidResponse(message) => "invalid response: " + message
+    RemoteError(message) => "remote error: " + message
+    Stdio(message) => "stdio error: " + message
+  }
+}
+
+///|
 priv suberror McpxDaemonStop
 
 ///|
@@ -85,7 +96,11 @@ pub async fn run_mcpx_daemon_foreground(
 ///|
 pub async fn daemon_ping(home~ : String, config_home? : String? = None) -> Bool {
   let req = Json::object({ "op": Json::string("ping") })
-  let result : Result[Json, _] = try? request(home~, config_home~, req)
+  let result : Result[Json, _] = try
+    request(home~, config_home~, req) |> Ok
+  catch {
+    e => Err(e)
+  }
   match result {
     Ok(Object(obj)) => obj.get("ok") == Some(Json::boolean(true))
     _ => false
@@ -115,16 +130,18 @@ pub async fn ensure_mcpx_daemon_running(
 ///|
 async fn start_daemon_process() -> Unit raise McpxDaemonError {
   let exe = @sys.get_cli_args().get(0).unwrap_or("mcpx")
-  let null_path = daemon_null_device_path()
-  let stdin = @process.redirect_from_file(null_path) catch {
+  let (stdin, stdin_writer) = @process.write_to_process() catch {
     error => raise McpxDaemonError::ConnectFailed(error.to_string())
   }
-  let stdout = @process.redirect_to_file(null_path) catch {
+  defer stdin_writer.close()
+  let (stdout_reader, stdout) = @process.read_from_process() catch {
     error => raise McpxDaemonError::ConnectFailed(error.to_string())
   }
-  let stderr = @process.redirect_to_file(null_path) catch {
+  defer stdout_reader.close()
+  let (stderr_reader, stderr) = @process.read_from_process() catch {
     error => raise McpxDaemonError::ConnectFailed(error.to_string())
   }
+  defer stderr_reader.close()
   ignore(
     @process.spawn_orphan(
       exe,
@@ -235,8 +252,8 @@ async fn handle_request(
     _ => ""
   }
   match op {
-    "ping" => (ok_response(Json::object({})), false)
-    "stop" => (ok_response(Json::object({})), true)
+    "ping" => (ok_response(Json::empty_object()), false)
+    "stop" => (ok_response(Json::empty_object()), true)
     "call_tool" => (handle_call_tool(obj, group, pool), false)
     "list_tools" => (handle_list_tools(obj, group, pool), false)
     _ => (error_response("unknown op"), false)
@@ -251,21 +268,26 @@ async fn handle_call_tool(
 ) -> Json {
   let key = string_field(obj, "key").unwrap_or("")
   let tool_name = string_field(obj, "tool").unwrap_or("")
-  let arguments = obj.get("args").unwrap_or(Json::object({}))
+  let arguments = obj.get("args").unwrap_or(Json::empty_object())
   let server = match decode_request_server(obj) {
     Ok(value) => value
     Err(message) => return error_response(message)
   }
-  let result : Result[Json, _] = try? ({
-    let entry = pool.entry(group, key, server)
-    entry.val.mutex.acquire()
-    entry.val.mark_used()
-    defer {
+  let result : Result[Json, _] = try
+    ({
+      let entry = pool.entry(group, key, server)
+      entry.val.mutex.acquire()
       entry.val.mark_used()
-      entry.val.mutex.release()
-    }
-    entry.val.client.call_tool(tool_name~, arguments~)
-  })
+      defer {
+        entry.val.mark_used()
+        entry.val.mutex.release()
+      }
+      entry.val.client.call_tool(tool_name~, arguments~)
+    })
+    |> Ok
+  catch {
+    error => Err(error)
+  }
   match result {
     Ok(value) => ok_response(value)
     Err(error) => error_response(error.to_string())
@@ -283,16 +305,21 @@ async fn handle_list_tools(
     Ok(value) => value
     Err(message) => return error_response(message)
   }
-  let result : Result[Array[@mcp_client.McpToolInfo], _] = try? ({
-    let entry = pool.entry(group, key, server)
-    entry.val.mutex.acquire()
-    entry.val.mark_used()
-    defer {
+  let result : Result[Array[@mcp_client.McpToolInfo], _] = try
+    ({
+      let entry = pool.entry(group, key, server)
+      entry.val.mutex.acquire()
       entry.val.mark_used()
-      entry.val.mutex.release()
-    }
-    entry.val.client.list_tools()
-  })
+      defer {
+        entry.val.mark_used()
+        entry.val.mutex.release()
+      }
+      entry.val.client.list_tools()
+    })
+    |> Ok
+  catch {
+    error => Err(error)
+  }
   match result {
     Ok(tools) =>
       ok_response(
@@ -379,7 +406,7 @@ async fn create_entry(
     client,
     mutex: @async.Semaphore(1),
     idle_timeout_ms: server_idle_timeout_ms(server),
-    last_used_ms: @async.now(),
+    last_used_ms: @env.now().reinterpret_as_int64(),
   }
 }
 
@@ -395,14 +422,16 @@ fn server_idle_timeout_ms(server : @config.McpServerConfig) -> Int? {
 ///|
 fn DaemonEntry::is_idle_expired(self : DaemonEntry) -> Bool {
   match self.idle_timeout_ms {
-    Some(timeout) => @async.now() - self.last_used_ms >= timeout.to_int64()
+    Some(timeout) =>
+      @env.now().reinterpret_as_int64() - self.last_used_ms >=
+      timeout.to_int64()
     None => false
   }
 }
 
 ///|
 fn DaemonEntry::mark_used(self : DaemonEntry) -> Unit {
-  self.last_used_ms = @async.now()
+  self.last_used_ms = @env.now().reinterpret_as_int64()
 }
 
 ///|
@@ -478,7 +507,7 @@ fn decode_request_server(
 fn decode_result(response : Json) -> Json raise McpxDaemonError {
   let obj = expect_response_object(response)
   match obj.get("ok") {
-    Some(True) => obj.get("result").unwrap_or(Json::object({}))
+    Some(True) => obj.get("result").unwrap_or(Json::empty_object())
     Some(False) => raise McpxDaemonError::RemoteError(error_message(obj))
     _ => raise McpxDaemonError::InvalidResponse("missing ok")
   }
@@ -586,16 +615,4 @@ async fn wait_for_daemon_state_removed(
     elapsed = elapsed + 50
   }
   read_mcpx_daemon_port(home~, config_home~) is None
-}
-
-///|
-#cfg(platform="windows")
-fn daemon_null_device_path() -> String {
-  "NUL"
-}
-
-///|
-#cfg(not(platform="windows"))
-fn daemon_null_device_path() -> String {
-  "/dev/null"
 }

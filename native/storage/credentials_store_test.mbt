@@ -30,6 +30,9 @@ test "credentials store: save uses secure write and can load roundtrip" {
     ),
   )
   save_credentials_file(path, file)
+  let saved = @fs.read_file_to_string(path)
+  inspect(saved.contains("\n  \"entries\""), content="true")
+  inspect(saved.has_suffix("\n"), content="true")
   inspect(credentials_file_mode(path), content="384")
   inspect(
     load_credentials_file_or_empty(path).to_json().stringify(),

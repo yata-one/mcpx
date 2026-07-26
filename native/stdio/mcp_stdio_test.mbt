@@ -14,7 +14,7 @@ async test "mcp stdio: initialize then call tool" {
   let result = stdio_mcp_call_tool(
     command="/bin/sh",
     args=["-c", script],
-    env={},
+    env=Map([]),
     cwd=None,
     tool_name="search",
     arguments=Json::object({ "q": Json::string("moonbit") }),
@@ -38,7 +38,7 @@ async test "mcp stdio: lists tools after initialize" {
   let tools = stdio_mcp_list_tools(
     command="/bin/sh",
     args=["-c", script],
-    env={},
+    env=Map([]),
     cwd=None,
   )
   @debug.debug_inspect(
@@ -75,13 +75,13 @@ async test "mcp stdio: persistent client reuses initialized process" {
       group,
       command="/bin/sh",
       args=["-c", script],
-      env={},
+      env=Map([]),
       cwd=None,
     )
-    let first = client.call_tool(tool_name="search", arguments=Json::object({}))
+    let first = client.call_tool(tool_name="search", arguments=Json::empty_object())
     let second = client.call_tool(
       tool_name="search",
-      arguments=Json::object({}),
+      arguments=Json::empty_object(),
     )
     client.close()
     inspect(

@@ -1,4 +1,10 @@
 ///|
+priv struct CredentialsSnapshot {
+  file : @auth.CredentialsFile
+  text : String
+}
+
+///|
 async fn run_auth(
   command : AuthCommand,
   home : String,
@@ -121,13 +127,13 @@ async fn complete_oauth_auth(
   config_home : String?,
 ) -> String {
   let paths = @app_paths.mcpx_app_paths(home, config_home~)
-  let credentials = @storage.load_credentials_file_or_empty(
-    paths.credentials_file,
-  ) catch {
-    _ => return error_result("failed to load credentials")
+  let snapshot = match
+    load_credentials_snapshot_or_empty(paths.credentials_file) {
+    Ok(value) => value
+    Err(message) => return error_result(message)
   }
   let flow = match
-    @auth.find_pending_oauth_flow(credentials, server_name~, state~) {
+    @auth.find_pending_oauth_flow(snapshot.file, server_name~, state~) {
     Some(value) => value
     None => return error_result("pending OAuth flow not found: " + server_name)
   }
@@ -164,18 +170,40 @@ async fn complete_oauth_auth(
     expires_at=tokens.expires_at,
     updated_at=issued_at.to_string(),
   )
-  let without_pending = @auth.remove_pending_oauth_flow(
-    credentials,
-    server_name~,
-    state~,
+  let latest_snapshot = match
+    load_credentials_snapshot_or_empty(paths.credentials_file) {
+    Ok(value) => value
+    Err(message) => return error_result(message)
+  }
+  match
+    @auth.find_pending_oauth_flow(latest_snapshot.file, server_name~, state~) {
+    Some(latest_flow) =>
+      if !same_pending_oauth_flow(latest_flow, flow) {
+        return error_result("pending OAuth flow was superseded: " + server_name)
+      }
+    None =>
+      return error_result("pending OAuth flow was superseded: " + server_name)
+  }
+  let without_pending = @auth.remove_server_pending_oauth_flows(
+    latest_snapshot.file,
+    server_name,
   )
-  let next = @auth.put_credentials_entry(
+  let next = @auth.replace_server_credentials_entry(
     without_pending,
     credentials_cache_key(server_name, flow.client_info.client_id),
     entry,
   )
-  @storage.save_credentials_file(paths.credentials_file, next) catch {
-    _ => return error_result("failed to save credentials")
+  match
+    save_credentials_file_if_unchanged(
+      paths.credentials_file,
+      latest_snapshot.text,
+      next,
+      error_message="failed to save credentials",
+    ) {
+    Ok(true) => ()
+    Ok(false) =>
+      return error_result("credentials changed during OAuth auth; retry")
+    Err(message) => return error_result(message)
   }
   auth_complete_result(server_name)
 }
@@ -192,11 +220,12 @@ fn save_pending_oauth_flow(
   code_verifier~ : String,
   state~ : String,
 ) -> Result[Unit, String] {
-  let credentials = @storage.load_credentials_file_or_empty(credentials_path) catch {
-    _ => return Err("failed to load credentials")
+  let snapshot = match load_credentials_snapshot_or_empty(credentials_path) {
+    Ok(value) => value
+    Err(message) => return Err(message)
   }
-  let next = @auth.put_pending_oauth_flow(
-    credentials,
+  let next = @auth.replace_server_pending_oauth_flow(
+    snapshot.file,
     @auth.pending_oauth_flow(
       server_name~,
       server_url~,
@@ -209,10 +238,78 @@ fn save_pending_oauth_flow(
       created_at=current_time_seconds().to_string(),
     ),
   )
-  @storage.save_credentials_file(credentials_path, next) catch {
-    _ => return Err("failed to save pending OAuth flow")
+  match
+    save_credentials_file_if_unchanged(
+      credentials_path,
+      snapshot.text,
+      next,
+      error_message="failed to save pending OAuth flow",
+    ) {
+    Ok(true) => ()
+    Ok(false) =>
+      return Err("credentials changed while saving pending OAuth flow; retry")
+    Err(message) => return Err(message)
   }
   Ok(())
+}
+
+///|
+fn same_pending_oauth_flow(
+  left : @auth.PendingOAuthFlow,
+  right : @auth.PendingOAuthFlow,
+) -> Bool {
+  left.server_name == right.server_name &&
+  left.server_url == right.server_url &&
+  left.client_info.client_id == right.client_info.client_id &&
+  left.client_info.client_secret == right.client_info.client_secret &&
+  left.token_endpoint == right.token_endpoint &&
+  left.redirect_uri == right.redirect_uri &&
+  left.code_verifier == right.code_verifier &&
+  left.state == right.state &&
+  left.created_at == right.created_at
+}
+
+///|
+fn load_credentials_snapshot_or_empty(
+  path : String,
+) -> Result[CredentialsSnapshot, String] {
+  if @fs.path_exists(path) {
+    let text = @fs.read_file_to_string(path) catch {
+      _ => return Err("failed to load credentials")
+    }
+    let json = @json.parse(text) catch {
+      _ => return Err("failed to load credentials")
+    }
+    let file = @auth.decode_credentials_file(json) catch {
+      _ => return Err("failed to load credentials")
+    }
+    Ok({ file, text })
+  } else {
+    Ok({ file: @auth.empty_credentials_file(), text: "" })
+  }
+}
+
+///|
+fn save_credentials_file_if_unchanged(
+  path : String,
+  expected_text : String,
+  file : @auth.CredentialsFile,
+  error_message~ : String,
+) -> Result[Bool, String] {
+  let current_text = if @fs.path_exists(path) {
+    @fs.read_file_to_string(path) catch {
+      _ => return Err(error_message)
+    }
+  } else {
+    ""
+  }
+  if current_text != expected_text {
+    return Ok(false)
+  }
+  @storage.save_credentials_file(path, file) catch {
+    _ => return Err(error_message)
+  }
+  Ok(true)
 }
 
 ///|
@@ -316,6 +413,12 @@ async fn call_headers_with_cached_auth(
         match
           @auth.decide_auth_cache(entry, now_seconds=current_time_seconds()) {
           @auth.CachedAuthDecision::UseBearerHeader(value) => {
+            prune_cached_oauth_credentials(
+              server_name~,
+              server_url~,
+              auth~,
+              credentials_path~,
+            )
             headers["Authorization"] = value
             Ok(headers)
           }
@@ -329,7 +432,6 @@ async fn call_headers_with_cached_auth(
                     auth~,
                     entry~,
                     refresh_token~,
-                    credentials~,
                     credentials_path~,
                   ) {
                   Ok(value) => {
@@ -350,13 +452,53 @@ async fn call_headers_with_cached_auth(
 }
 
 ///|
+fn prune_cached_oauth_credentials(
+  server_name~ : String,
+  server_url~ : String,
+  auth~ : @config.ServerAuthConfig,
+  credentials_path~ : String,
+) -> Unit {
+  let snapshot = match load_credentials_snapshot_or_empty(credentials_path) {
+    Ok(value) => value
+    Err(_) => return
+  }
+  let pruned = match
+    @auth.find_credentials_entry(
+      snapshot.file,
+      server_name~,
+      server_url=Some(server_url),
+    ) {
+    Some(entry) =>
+      match oauth_client_id(auth, entry) {
+        Some(client_id) =>
+          @auth.replace_server_credentials_entry(
+            snapshot.file,
+            credentials_cache_key(server_name, client_id),
+            entry,
+          )
+        None => snapshot.file
+      }
+    None => snapshot.file
+  }
+  if snapshot.text != @auth.credentials_file_json(pruned) {
+    ignore(
+      save_credentials_file_if_unchanged(
+        credentials_path,
+        snapshot.text,
+        pruned,
+        error_message="failed to save credentials",
+      ),
+    )
+  }
+}
+
+///|
 async fn refresh_oauth_credentials(
   server_name~ : String,
   server_url~ : String,
   auth~ : @config.ServerAuthConfig,
   entry~ : @auth.CredentialsEntry,
   refresh_token~ : String,
-  credentials~ : @auth.CredentialsFile,
   credentials_path~ : String,
 ) -> Result[String, String] {
   let client_id = match oauth_client_id(auth, entry) {
@@ -407,15 +549,47 @@ async fn refresh_oauth_credentials(
     expires_at=tokens.expires_at,
     updated_at=issued_at.to_string(),
   )
-  let updated_credentials = @auth.put_credentials_entry(
-    credentials,
+  let latest_snapshot = match
+    load_credentials_snapshot_or_empty(credentials_path) {
+    Ok(value) => value
+    Err(message) => return Err(message)
+  }
+  let current_entry = @auth.find_credentials_entry(
+    latest_snapshot.file,
+    server_name~,
+    server_url=Some(server_url),
+  )
+  if !same_refresh_credentials_source(auth, current_entry, entry, refresh_token) {
+    return cached_auth_after_refresh_race(current_entry)
+  }
+  let updated_credentials = @auth.replace_server_credentials_entry(
+    latest_snapshot.file,
     credentials_cache_key(server_name, client_id),
     updated_entry,
   )
-  @storage.save_credentials_file(credentials_path, updated_credentials) catch {
-    _ => return Err("failed to save refreshed credentials")
+  match
+    save_credentials_file_if_unchanged(
+      credentials_path,
+      latest_snapshot.text,
+      updated_credentials,
+      error_message="failed to save refreshed credentials",
+    ) {
+    Ok(true) => Ok("Bearer " + tokens.access_token)
+    Ok(false) => {
+      let newest_snapshot = match
+        load_credentials_snapshot_or_empty(credentials_path) {
+        Ok(value) => value
+        Err(message) => return Err(message)
+      }
+      let newest_entry = @auth.find_credentials_entry(
+        newest_snapshot.file,
+        server_name~,
+        server_url=Some(server_url),
+      )
+      cached_auth_after_refresh_race(newest_entry)
+    }
+    Err(message) => Err(message)
   }
-  Ok("Bearer " + tokens.access_token)
 }
 
 ///|
@@ -436,6 +610,34 @@ async fn fetch_oauth_metadata(
   match @auth.decode_oauth_metadata(metadata_json) {
     Ok(value) => Ok(value)
     Err(_) => Err("invalid OAuth metadata")
+  }
+}
+
+///|
+fn cached_auth_after_refresh_race(
+  current : @auth.CredentialsEntry?,
+) -> Result[String, String] {
+  match @auth.decide_auth_cache(current, now_seconds=current_time_seconds()) {
+    @auth.CachedAuthDecision::UseBearerHeader(value) => Ok(value)
+    _ => Err("credentials changed during OAuth refresh; retry")
+  }
+}
+
+///|
+fn same_refresh_credentials_source(
+  auth : @config.ServerAuthConfig,
+  current : @auth.CredentialsEntry?,
+  original : @auth.CredentialsEntry,
+  refresh_token : String,
+) -> Bool {
+  match current {
+    Some(value) =>
+      oauth_client_id(auth, value) == oauth_client_id(auth, original) &&
+      value.tokens.access_token == original.tokens.access_token &&
+      value.tokens.refresh_token == Some(refresh_token) &&
+      value.tokens.expires_at == original.tokens.expires_at &&
+      value.updated_at == original.updated_at
+    None => false
   }
 }
 

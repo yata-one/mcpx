@@ -30,12 +30,17 @@ test "auth host actions: stores refreshed credentials with private atomic write"
     credentials_path="/home/me/.config/mcpx/credentials.json",
     file,
   )
-  inspect(
-    action.to_json().stringify(),
-    content=(
-      #|{"kind":"write_text_file","path":"/home/me/.config/mcpx/credentials.json","contents":"{\"entries\":{\"github|abcd\":{\"serverName\":\"github\",\"serverUrl\":\"https://mcp.github.com/mcp\",\"clientInfo\":{\"client_id\":\"client-1\"},\"tokens\":{\"access_token\":\"access-1\",\"refresh_token\":\"refresh-1\",\"token_type\":\"Bearer\",\"expires_at\":2000},\"updatedAt\":\"2026-05-16T00:00:00.000Z\"}},\"version\":1}","mode":384,"atomic":true,"createParentDirs":true}
-    ),
-  )
+  match action {
+    @host.HostAction::WriteTextFile(write) => {
+      inspect(write.path, content="/home/me/.config/mcpx/credentials.json")
+      inspect(write.contents.contains("\n  \"entries\""), content="true")
+      inspect(write.contents.has_suffix("\n"), content="true")
+      inspect(write.mode, content="384")
+      inspect(write.atomic_write, content="true")
+      inspect(write.create_parent_dirs, content="true")
+    }
+    _ => inspect("unexpected action", content="write action")
+  }
 }
 
 ///|

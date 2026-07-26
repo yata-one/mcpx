@@ -45,7 +45,7 @@ async test "mcpx runtime: info uses configured remote HTTP server" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -141,7 +141,7 @@ async test "mcpx runtime: info without target lists configured servers" {
   inspect(
     run_mcpx_args_async(["info"], home~),
     content=(
-      #|Servers
+      #|Servers:
       #|  github                 GitHub Issues, PRs, and code search
       #|  very-long-server-name  This description is intentionally longer than sixty chara...
     ),
@@ -182,7 +182,7 @@ async test "mcpx runtime: info can use direct remote URL without config" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),

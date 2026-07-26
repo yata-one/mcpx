@@ -19,7 +19,7 @@ pub fn credentials_write_action(
 ) -> @host.HostAction {
   @host.host_write_private_text_file(
     path=credentials_path,
-    contents=file.to_json().stringify(),
+    contents=credentials_file_json(file),
   )
 }
 

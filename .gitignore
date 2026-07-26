@@ -1,12 +1,18 @@
 # MacOS
 .DS_Store
 
+# Nix
+.direnv/
+cache-private-key.pem
+cache-public-key.pem
+
 # moonbit
 _build/
 target/
 .mooncakes/
 .moonagent/
 .moon_tmp2/
+pkg.generated.mbti
 
 # codex
 CONTINUITY.md

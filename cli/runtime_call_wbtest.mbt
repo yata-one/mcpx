@@ -45,7 +45,7 @@ async test "mcpx runtime: call uses configured remote HTTP server" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -115,7 +115,7 @@ async test "mcpx runtime: call can use direct remote URL without config" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -207,7 +207,7 @@ async test "mcpx runtime: call resolves headers from .env before HTTP request" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -332,16 +332,39 @@ async test "mcpx runtime: call uses cached OAuth bearer from credentials file" {
     )
     @storage.save_credentials_file(
       paths.credentials_file,
-      @auth.put_credentials_entry(
-        @auth.empty_credentials_file(),
-        "github|client-1",
-        @auth.credentials_entry(
+      @auth.put_pending_oauth_flow(
+        @auth.put_credentials_entry(
+          @auth.put_credentials_entry(
+            @auth.empty_credentials_file(),
+            "github|old-client",
+            @auth.credentials_entry(
+              server_name="github",
+              server_url=Some(url),
+              client_id=Some("old-client"),
+              access_token="old-token",
+              refresh_token=Some("old-refresh-token"),
+              updated_at="100",
+            ),
+          ),
+          "github|client-1",
+          @auth.credentials_entry(
+            server_name="github",
+            server_url=Some(url),
+            client_id=Some("client-1"),
+            access_token="cached-token",
+            refresh_token=Some("refresh-token"),
+            updated_at="200",
+          ),
+        ),
+        @auth.pending_oauth_flow(
           server_name="github",
           server_url=Some(url),
-          client_id=Some("client-1"),
-          access_token="cached-token",
-          refresh_token=Some("refresh-token"),
-          updated_at="2026-05-16T00:00:00.000Z",
+          client_id="active-client",
+          token_endpoint="https://auth.example/token",
+          redirect_uri="http://127.0.0.1:8765/callback",
+          code_verifier="active-verifier",
+          state="active-state",
+          created_at="300",
         ),
       ),
     )
@@ -373,7 +396,7 @@ async test "mcpx runtime: call uses cached OAuth bearer from credentials file" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -409,6 +432,17 @@ async test "mcpx runtime: call uses cached OAuth bearer from credentials file" {
       ),
     )
     inspect(seen_auth.join(","), content="Bearer cached-token")
+    let credentials = @storage.load_credentials_file_or_empty(
+      paths.credentials_file,
+    )
+    inspect(credentials.entries.length(), content="1")
+    inspect(credentials.entries.contains("github|old-client"), content="false")
+    inspect(credentials.entries.contains("github|client-1"), content="true")
+    inspect(credentials.pending_oauth.length(), content="1")
+    inspect(
+      credentials.pending_oauth.contains("github|active-state"),
+      content="true",
+    )
   })
 }
 
@@ -571,17 +605,29 @@ async test "mcpx runtime: call refreshes near-expiry OAuth token before request"
     )
     @storage.save_credentials_file(
       paths.credentials_file,
-      @auth.put_credentials_entry(
-        @auth.empty_credentials_file(),
-        "github|client-1",
-        @auth.credentials_entry(
+      @auth.put_pending_oauth_flow(
+        @auth.put_credentials_entry(
+          @auth.empty_credentials_file(),
+          "github|client-1",
+          @auth.credentials_entry(
+            server_name="github",
+            server_url=Some(mcp_url),
+            client_id=Some("client-1"),
+            access_token="expired-token",
+            refresh_token=Some("refresh-token"),
+            expires_at=Some(1),
+            updated_at="2026-05-16T00:00:00.000Z",
+          ),
+        ),
+        @auth.pending_oauth_flow(
           server_name="github",
           server_url=Some(mcp_url),
-          client_id=Some("client-1"),
-          access_token="expired-token",
-          refresh_token=Some("refresh-token"),
-          expires_at=Some(1),
-          updated_at="2026-05-16T00:00:00.000Z",
+          client_id="active-client",
+          token_endpoint="https://auth.example/token",
+          redirect_uri="http://127.0.0.1:8765/callback",
+          code_verifier="active-verifier",
+          state="active-state",
+          created_at="300",
         ),
       ),
     )
@@ -643,7 +689,7 @@ async test "mcpx runtime: call refreshes near-expiry OAuth token before request"
                 "id": id,
                 "result": Json::object({
                   "protocolVersion": Json::string("2025-03-26"),
-                  "capabilities": Json::object({}),
+                  "capabilities": Json::empty_object(),
                   "serverInfo": Json::object({ "name": Json::string("srv") }),
                 }),
               }).stringify(),
@@ -686,6 +732,16 @@ async test "mcpx runtime: call refreshes near-expiry OAuth token before request"
       content=(
         #|grant_type=refresh_token&client_id=client-1&refresh_token=refresh-token
       ),
+    )
+    let credentials = @storage.load_credentials_file_or_empty(
+      paths.credentials_file,
+    )
+    inspect(credentials.entries.length(), content="1")
+    inspect(credentials.entries.contains("github|client-1"), content="true")
+    inspect(credentials.pending_oauth.length(), content="1")
+    inspect(
+      credentials.pending_oauth.contains("github|active-state"),
+      content="true",
     )
   })
 }

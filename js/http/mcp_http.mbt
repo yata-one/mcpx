@@ -71,7 +71,7 @@ pub fn mcpx_js_call_tool(
   arguments_json : String,
 ) -> @js_async.Promise[String] {
   @js_async.Promise::from_async(() => {
-    let arguments = @json.parse(arguments_json) catch { _ => Json::object({}) }
+    let arguments = @json.parse(arguments_json) catch { _ => Json::empty_object() }
     let result = call_tool_js(fetch, url~, tool_name~, arguments~)
     Json::object({ "status": Json::string("ok"), "result": result }).stringify()
   })

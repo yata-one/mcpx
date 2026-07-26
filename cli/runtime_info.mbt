@@ -80,7 +80,7 @@ fn run_info_servers(home : String, config_home : String?) -> String {
   if config.servers.is_empty() {
     return "No servers configured.\nConfig: " + paths.servers_config
   }
-  let lines = ["Servers"]
+  let lines = ["Servers:"]
   let name_width = max_server_name_width(config.servers)
   for name, server in config.servers {
     match first_description_line(server.description) {
