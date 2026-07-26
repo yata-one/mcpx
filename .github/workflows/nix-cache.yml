@@ -1,0 +1,134 @@
+name: Nix cache
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: mcpx-nix-cache-publish
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build cache (${{ matrix.system }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            system: x86_64-linux
+          - runner: macos-14
+            system: aarch64-darwin
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build
+        run: |
+          set -euo pipefail
+          nix build --out-link result
+
+      - name: Create signed binary cache
+        env:
+          NIX_CACHE_PRIVATE_KEY: ${{ secrets.NIX_CACHE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NIX_CACHE_PRIVATE_KEY"
+
+          key="$RUNNER_TEMP/cache-private-key.pem"
+          cache="$RUNNER_TEMP/nix-cache"
+          printf '%s' "$NIX_CACHE_PRIVATE_KEY" > "$key"
+          chmod 600 "$key"
+          mkdir -p "$cache/manifests"
+
+          out="$(readlink result)"
+          nix copy \
+            --to "file://$cache?compression=zstd&secret-key=$key" \
+            "$out"
+          nix path-info --recursive "$out" \
+            > "$cache/manifests/main-${{ matrix.system }}.txt"
+
+          rm -f "$key"
+
+      - name: Upload binary cache
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nix-cache-${{ matrix.system }}
+          path: ${{ runner.temp }}/nix-cache
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    name: Publish latest cache
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Download cache artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: nix-cache-*
+          path: ${{ runner.temp }}/cache-parts
+
+      - name: Assemble latest cache
+        run: |
+          set -euo pipefail
+          publish="$RUNNER_TEMP/publish"
+          mkdir -p "$publish"
+
+          for part in "$RUNNER_TEMP"/cache-parts/nix-cache-*; do
+            cp -a "$part"/. "$publish"/
+          done
+
+          touch "$publish/.nojekyll"
+          test -f "$publish/nix-cache-info"
+          test -f "$publish/manifests/main-x86_64-linux.txt"
+          test -f "$publish/manifests/main-aarch64-darwin.txt"
+
+          size_kib="$(du -sk "$publish" | cut -f1)"
+          echo "Cache size: $size_kib KiB"
+          test "$size_kib" -lt 921600
+
+      - name: Replace gh-pages
+        run: |
+          set -euo pipefail
+
+          latest="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test "$latest" = "$GITHUB_SHA"
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git checkout --orphan nix-cache-publish
+          git rm -rf .
+          cp -a "$RUNNER_TEMP/publish"/. .
+          git add --all
+          git commit -m "Publish Nix cache for $GITHUB_SHA"
+
+          latest="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test "$latest" = "$GITHUB_SHA"
+          git push --force origin HEAD:gh-pages

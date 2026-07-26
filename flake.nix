@@ -1,6 +1,15 @@
 {
   description = "mcpx - native MCP CLI and portable MCP client runtime";
 
+  nixConfig = {
+    extra-substituters = [
+      "https://yata-one.github.io/mcpx"
+    ];
+    extra-trusted-public-keys = [
+      "yata-one-mcpx-1:0GPBIC52/PszrTcDzKJIZ7qMmcRvKAWK2WzZYKskgCs="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
