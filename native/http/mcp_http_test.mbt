@@ -25,7 +25,7 @@ async test "mcp http: initialize then call tool with session" {
         if rpc_method == "initialize" {
           let result = Json::object({
             "protocolVersion": Json::string("2025-03-26"),
-            "capabilities": Json::object({}),
+            "capabilities": Json::empty_object(),
             "serverInfo": Json::object({ "name": Json::string("srv") }),
           })
           conn.send_response(200, "OK", extra_headers={
@@ -68,7 +68,7 @@ async test "mcp http: initialize then call tool with session" {
     })
     let result = http_mcp_call_tool(
       url="http://localhost:\{port}/mcp",
-      headers={},
+      headers=Map([]),
       tool_name="search",
       arguments=Json::object({ "q": Json::string("moonbit") }),
     )
@@ -110,7 +110,7 @@ async test "mcp http: decodes text event stream JSON-RPC response" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -140,7 +140,7 @@ async test "mcp http: decodes text event stream JSON-RPC response" {
     })
     let result = http_mcp_call_tool(
       url="http://localhost:\{port}/mcp",
-      headers={},
+      headers=Map([]),
       tool_name="search",
       arguments=Json::object({ "q": Json::string("moonbit") }),
     )
@@ -182,7 +182,7 @@ async test "mcp http: lists tools after initialize" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -220,7 +220,7 @@ async test "mcp http: lists tools after initialize" {
         }
       })
     })
-    let tools = http_mcp_list_tools(url="http://localhost:\{port}/mcp", headers={})
+    let tools = http_mcp_list_tools(url="http://localhost:\{port}/mcp", headers=Map([]))
     @debug.debug_inspect(
       tools,
       content=(

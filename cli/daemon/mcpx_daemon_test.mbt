@@ -23,14 +23,14 @@ async test "mcpx daemon: reuses keep-alive stdio client" {
       key="local",
       server~,
       tool_name="count",
-      arguments=Json::object({}),
+      arguments=Json::empty_object(),
     )
     let second = daemon_call_tool(
       home~,
       key="local",
       server~,
       tool_name="count",
-      arguments=Json::object({}),
+      arguments=Json::empty_object(),
     )
     inspect(
       first.stringify() + "|" + second.stringify(),
@@ -68,7 +68,7 @@ async test "mcpx daemon: idle timeout evicts stale stdio client" {
       key="local",
       server~,
       tool_name="count",
-      arguments=Json::object({}),
+      arguments=Json::empty_object(),
     )
     @async.sleep(90)
     let second = daemon_call_tool(
@@ -76,7 +76,7 @@ async test "mcpx daemon: idle timeout evicts stale stdio client" {
       key="local",
       server~,
       tool_name="count",
-      arguments=Json::object({}),
+      arguments=Json::empty_object(),
     )
     inspect(
       first.stringify() + "|" + second.stringify(),
@@ -139,7 +139,7 @@ async test "mcpx daemon: stop closes keep-alive stdio pool" {
       key="local",
       server~,
       tool_name="count",
-      arguments=Json::object({}),
+      arguments=Json::empty_object(),
     )
     inspect(result.stringify(), content="{\"call\":1}")
     inspect(daemon_stop(home~), content="true")
@@ -226,7 +226,7 @@ async test "mcpx daemon: stop while concurrent call_tool is in-flight" {
       key="local",
       server~,
       tool_name="count",
-      arguments=Json::object({}),
+      arguments=Json::empty_object(),
     )
     inspect(first.stringify(), content="{\"call\":1}")
     inspect(daemon_stop(home~), content="true")
@@ -236,7 +236,7 @@ async test "mcpx daemon: stop while concurrent call_tool is in-flight" {
         key="local",
         server~,
         tool_name="count",
-        arguments=Json::object({}),
+        arguments=Json::empty_object(),
       )
       |> Ok
     catch {

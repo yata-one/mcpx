@@ -23,7 +23,7 @@ test "bench mcp_client decode representative responses" (it : @bench.T) {
     "id": Json::number(1.0, repr="1"),
     "result": Json::object({
       "protocolVersion": Json::string("2025-03-26"),
-      "capabilities": Json::object({}),
+      "capabilities": Json::empty_object(),
       "serverInfo": Json::object({
         "name": Json::string("srv"),
         "version": Json::string("1.0.0"),

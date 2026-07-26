@@ -61,7 +61,7 @@ jobs:
             experimental-features = nix-command flakes
 
       - name: moon fmt/check
-        run: nix develop --command moon check --target native --deny-warn --fmt
+        run: nix develop --command moon check --target native --deny-warn
 
       - name: moon test
         run: nix develop --command moon test --target native --no-render

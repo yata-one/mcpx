@@ -9,7 +9,7 @@ test "env template: resolves ${VAR} from provided env" {
 ///|
 test "env template: missing var raises in strict mode" {
   let result : Result[String, EnvTemplateError] = try
-    resolve_env_template("Bearer ${TOKEN}", {}) |> Ok
+    resolve_env_template("Bearer ${TOKEN}", Map([])) |> Ok
   catch {
     e => Err(e)
   }
@@ -19,7 +19,7 @@ test "env template: missing var raises in strict mode" {
 ///|
 test "env template: non-strict missing var becomes empty" {
   inspect(
-    resolve_env_template("Bearer ${TOKEN}", {}, strict=false),
+    resolve_env_template("Bearer ${TOKEN}", Map([]), strict=false),
     content="Bearer ",
   )
 }
@@ -40,7 +40,7 @@ test "env template: rejects fallback syntax because only ${VAR} is supported" {
 ///|
 test "env template: rejects empty placeholder" {
   let result : Result[String, EnvTemplateError] = try
-    resolve_env_template("${}", {}) |> Ok
+    resolve_env_template("${}", Map([])) |> Ok
   catch {
     e => Err(e)
   }

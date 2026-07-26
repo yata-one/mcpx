@@ -77,7 +77,7 @@ fn resolve_call_arguments(
     (Some(text), _) | (None, Some(text)) => {
       let trimmed = text.trim()
       if trimmed.is_empty() {
-        Ok(Json::object({}))
+        Ok(Json::empty_object())
       } else {
         let json = @json.parse(trimmed) catch {
           _ => return Err("invalid JSON arguments")
@@ -85,7 +85,7 @@ fn resolve_call_arguments(
         Ok(json)
       }
     }
-    (None, None) => Ok(Json::object({}))
+    (None, None) => Ok(Json::empty_object())
   }
 }
 

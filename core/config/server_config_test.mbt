@@ -243,7 +243,7 @@ test "server config: auto keep-alive for known stdio commands unless dynamic chr
     args=["chrome-devtools-mcp", "${CHROME_DEVTOOLS_URL}"],
   )
   @debug.debug_inspect(
-    resolve_server_env(keep, {}),
+    resolve_server_env(keep, Map([])),
     content=(
       #|Ok(
       #|  {

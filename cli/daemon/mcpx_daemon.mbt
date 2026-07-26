@@ -252,8 +252,8 @@ async fn handle_request(
     _ => ""
   }
   match op {
-    "ping" => (ok_response(Json::object({})), false)
-    "stop" => (ok_response(Json::object({})), true)
+    "ping" => (ok_response(Json::empty_object()), false)
+    "stop" => (ok_response(Json::empty_object()), true)
     "call_tool" => (handle_call_tool(obj, group, pool), false)
     "list_tools" => (handle_list_tools(obj, group, pool), false)
     _ => (error_response("unknown op"), false)
@@ -268,7 +268,7 @@ async fn handle_call_tool(
 ) -> Json {
   let key = string_field(obj, "key").unwrap_or("")
   let tool_name = string_field(obj, "tool").unwrap_or("")
-  let arguments = obj.get("args").unwrap_or(Json::object({}))
+  let arguments = obj.get("args").unwrap_or(Json::empty_object())
   let server = match decode_request_server(obj) {
     Ok(value) => value
     Err(message) => return error_response(message)
@@ -507,7 +507,7 @@ fn decode_request_server(
 fn decode_result(response : Json) -> Json raise McpxDaemonError {
   let obj = expect_response_object(response)
   match obj.get("ok") {
-    Some(True) => obj.get("result").unwrap_or(Json::object({}))
+    Some(True) => obj.get("result").unwrap_or(Json::empty_object())
     Some(False) => raise McpxDaemonError::RemoteError(error_message(obj))
     _ => raise McpxDaemonError::InvalidResponse("missing ok")
   }

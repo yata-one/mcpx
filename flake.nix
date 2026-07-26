@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    moonbit-overlay.url = "github:moonbit-community/moonbit-overlay/v0.10.1+a46be2066+afb4494";
+    moonbit-overlay.url = "github:moonbit-community/moonbit-overlay/v0.10.4+2cc641edf+75c7e1f";
     moon-registry = {
       url = "git+https://mooncakes.io/git/index";
       flake = false;

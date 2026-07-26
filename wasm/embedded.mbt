@@ -172,7 +172,7 @@ fn run_mcp_http_operation(
       _ => return wasm_error("invalid_input", "toolName is required")
     }
     state["toolName"] = Json::string(tool_name)
-    state["arguments"] = obj.get("arguments").unwrap_or(Json::object({}))
+    state["arguments"] = obj.get("arguments").unwrap_or(Json::empty_object())
   }
   needs_host(Json::object(state), [
     @host.host_http_request(
@@ -288,7 +288,7 @@ fn reduce_mcp_http_initialized(
       let tool_name = expect_string_field(state_obj, "toolName") catch {
         _ => return wasm_error("invalid_state", "toolName is required")
       }
-      let arguments = state_obj.get("arguments").unwrap_or(Json::object({}))
+      let arguments = state_obj.get("arguments").unwrap_or(Json::empty_object())
       let client = @mcp_client.mcp_client(
         client_name="mcpx",
         client_version="0.1.4",

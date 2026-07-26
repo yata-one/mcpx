@@ -81,7 +81,7 @@ test "wasm: reduce MCP initialize response to initialized notification action" {
     "id": Json::number(1.0, repr="1"),
     "result": Json::object({
       "protocolVersion": Json::string("2025-03-26"),
-      "capabilities": Json::object({}),
+      "capabilities": Json::empty_object(),
       "serverInfo": Json::object({ "name": Json::string("srv") }),
     }),
   }).stringify()
@@ -114,7 +114,7 @@ test "wasm: MCP HTTP list flow completes through host actions" {
     "id": Json::number(1.0, repr="1"),
     "result": Json::object({
       "protocolVersion": Json::string("2025-03-26"),
-      "capabilities": Json::object({}),
+      "capabilities": Json::empty_object(),
       "serverInfo": Json::object({ "name": Json::string("srv") }),
     }),
   }).stringify()
@@ -186,7 +186,7 @@ test "wasm: MCP HTTP call flow completes through host actions" {
     "id": Json::number(1.0, repr="1"),
     "result": Json::object({
       "protocolVersion": Json::string("2025-03-26"),
-      "capabilities": Json::object({}),
+      "capabilities": Json::empty_object(),
       "serverInfo": Json::object({ "name": Json::string("srv") }),
     }),
   }).stringify()

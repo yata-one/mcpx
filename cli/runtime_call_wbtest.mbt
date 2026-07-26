@@ -45,7 +45,7 @@ async test "mcpx runtime: call uses configured remote HTTP server" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -115,7 +115,7 @@ async test "mcpx runtime: call can use direct remote URL without config" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -207,7 +207,7 @@ async test "mcpx runtime: call resolves headers from .env before HTTP request" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -396,7 +396,7 @@ async test "mcpx runtime: call uses cached OAuth bearer from credentials file" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -689,7 +689,7 @@ async test "mcpx runtime: call refreshes near-expiry OAuth token before request"
                 "id": id,
                 "result": Json::object({
                   "protocolVersion": Json::string("2025-03-26"),
-                  "capabilities": Json::object({}),
+                  "capabilities": Json::empty_object(),
                   "serverInfo": Json::object({ "name": Json::string("srv") }),
                 }),
               }).stringify(),

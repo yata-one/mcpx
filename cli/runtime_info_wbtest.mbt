@@ -45,7 +45,7 @@ async test "mcpx runtime: info uses configured remote HTTP server" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),
@@ -182,7 +182,7 @@ async test "mcpx runtime: info can use direct remote URL without config" {
               "id": id,
               "result": Json::object({
                 "protocolVersion": Json::string("2025-03-26"),
-                "capabilities": Json::object({}),
+                "capabilities": Json::empty_object(),
                 "serverInfo": Json::object({ "name": Json::string("srv") }),
               }),
             }).stringify(),

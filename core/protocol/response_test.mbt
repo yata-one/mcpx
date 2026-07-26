@@ -5,7 +5,7 @@ test "mcp client response: decodes initialize tool list and call result" {
     "id": Json::number(1.0, repr="1"),
     "result": Json::object({
       "protocolVersion": Json::string("2025-03-26"),
-      "capabilities": Json::object({}),
+      "capabilities": Json::empty_object(),
       "serverInfo": Json::object({ "name": Json::string("srv") }),
     }),
   })
@@ -55,7 +55,7 @@ test "mcp client response: decodes initialize tool list and call result" {
     "result": Json::object({ "ok": Json::boolean(true) }),
   })
   inspect(
-    (decode_mcp_result(call, expected_id=3) catch { _ => Json::object({}) }).stringify(),
+    (decode_mcp_result(call, expected_id=3) catch { _ => Json::empty_object() }).stringify(),
     content="{\"ok\":true}",
   )
 }
@@ -65,7 +65,7 @@ test "mcp client response: rejects id mismatch and surfaces json-rpc errors" {
   let mismatch = Json::object({
     "jsonrpc": Json::string("2.0"),
     "id": Json::number(9.0, repr="9"),
-    "result": Json::object({}),
+    "result": Json::empty_object(),
   })
   @debug.debug_inspect(
     try decode_mcp_result(mismatch, expected_id=1) |> Ok catch {

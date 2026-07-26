@@ -9,7 +9,7 @@ test "mcp client session: tracks initialization and request ids" {
     "id": Json::number(1.0, repr="1"),
     "result": Json::object({
       "protocolVersion": Json::string("2025-03-26"),
-      "capabilities": Json::object({}),
+      "capabilities": Json::empty_object(),
       "serverInfo": Json::object({ "name": Json::string("srv") }),
     }),
   })
