@@ -18,14 +18,16 @@ pub struct HttpResponse {
 pub struct Endpoint {
   url : String
   headers : Map[String, String]
+  mode : @config.McpConnectionMode
 }
 
 ///|
 pub fn http_endpoint(
   url~ : String,
   headers? : Map[String, String] = Map([]),
+  mode? : @config.McpConnectionMode = @config.McpConnectionMode::Auto,
 ) -> Endpoint {
-  { url, headers }
+  { url, headers, mode }
 }
 
 ///|

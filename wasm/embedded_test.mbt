@@ -67,7 +67,7 @@ test "wasm: run can plan MCP initialize over host HTTP using core client" {
   inspect(
     mcpx_tool_run(input),
     content=(
-      #|{"status":"needs_host","state":{"phase":"mcp_http_initialize","url":"http://localhost:3000/mcp","requestId":1},"actions":[{"kind":"http_request","method":"POST","url":"http://localhost:3000/mcp","headers":{"content-type":"application/json","accept":"application/json, text/event-stream"},"body":"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2026-07-28\",\"capabilities\":{},\"clientInfo\":{\"name\":\"mcpx\",\"version\":\"0.1.3\"}}}"}]}
+      #|{"status":"needs_host","state":{"phase":"mcp_http_initialize","url":"http://localhost:3000/mcp","requestId":1},"actions":[{"kind":"http_request","method":"POST","url":"http://localhost:3000/mcp","headers":{"content-type":"application/json","accept":"application/json, text/event-stream"},"body":"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2026-07-28\",\"capabilities\":{},\"clientInfo\":{\"name\":\"mcpx\",\"version\":\"0.1.4\"}}}"}]}
     ),
   )
 }
@@ -81,7 +81,7 @@ test "wasm: reduce MCP initialize response to initialized notification action" {
     "id": Json::number(1.0, repr="1"),
     "result": Json::object({
       "protocolVersion": Json::string("2026-07-28"),
-      "capabilities": Json::object({}),
+      "capabilities": Json::empty_object(),
       "serverInfo": Json::object({ "name": Json::string("srv") }),
     }),
   }).stringify()
@@ -114,7 +114,7 @@ test "wasm: MCP HTTP list flow completes through host actions" {
     "id": Json::number(1.0, repr="1"),
     "result": Json::object({
       "protocolVersion": Json::string("2026-07-28"),
-      "capabilities": Json::object({}),
+      "capabilities": Json::empty_object(),
       "serverInfo": Json::object({ "name": Json::string("srv") }),
     }),
   }).stringify()
@@ -186,7 +186,7 @@ test "wasm: MCP HTTP call flow completes through host actions" {
     "id": Json::number(1.0, repr="1"),
     "result": Json::object({
       "protocolVersion": Json::string("2026-07-28"),
-      "capabilities": Json::object({}),
+      "capabilities": Json::empty_object(),
       "serverInfo": Json::object({ "name": Json::string("srv") }),
     }),
   }).stringify()

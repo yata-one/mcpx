@@ -1,29 +1,20 @@
 ///|
+const MCPX_CLIENT_VERSION : String = "0.1.4"
+
+///|
+priv enum Negotiation {
+  Modern(@protocol.McpProtocolVersion)
+  InitializeEra(@protocol.McpProtocolVersion)
+}
+
+///|
 pub async fn list_tools(
   fetch : async (HttpRequest) -> HttpResponse,
   endpoint : Endpoint,
 ) -> Array[@protocol.McpToolInfo] raise McpHttpClientError {
-  let request = @protocol.mcp_tools_list_request(
-    id=1,
-    client_name="mcpx",
-    client_version="0.1.3",
-  )
-  let response = post_json(
-    fetch,
-    endpoint,
-    build_headers(endpoint.headers, rpc_method="tools/list", rpc_name=None),
-    request,
-  )
-  if response.status_code == 400 {
-    if should_try_legacy_fallback(response) {
-      return list_tools_legacy(fetch, endpoint)
-    }
-    raise jsonrpc_error(response)
-  }
-  let json = response_json(response)
-  match @protocol.decode_mcp_tool_list_response(json, expected_id=1) {
-    Ok(value) => value
-    Err(_) => raise McpHttpClientError::Protocol("mcp protocol error")
+  match negotiate(fetch, endpoint) {
+    Modern(version) => list_tools_modern(fetch, endpoint, version)
+    InitializeEra(version) => list_tools_legacy(fetch, endpoint, version)
   }
 }
 
@@ -34,32 +25,189 @@ pub async fn call_tool(
   tool_name~ : String,
   arguments~ : Json,
 ) -> Json raise McpHttpClientError {
-  let request = @protocol.mcp_tool_call_request(
-    id=1,
-    name=tool_name,
-    arguments~,
+  match negotiate(fetch, endpoint) {
+    Modern(version) =>
+      call_tool_modern(fetch, endpoint, version, tool_name~, arguments~)
+    InitializeEra(version) =>
+      call_tool_legacy(fetch, endpoint, version, tool_name~, arguments~)
+  }
+}
+
+///|
+async fn negotiate(
+  fetch : async (HttpRequest) -> HttpResponse,
+  endpoint : Endpoint,
+) -> Negotiation raise McpHttpClientError {
+  let requested = @protocol.McpProtocolVersion::V2026_07_28
+  let response = send_discover(fetch, endpoint, requested)
+  if is_clear_legacy_signal(response) {
+    return Negotiation::InitializeEra(@protocol.McpProtocolVersion::V2025_11_25)
+  }
+  let discover = decode_discover_http_response(response) catch {
+    McpHttpClientError::UnsupportedProtocolVersion(supported) => {
+      let parsed = supported.map(@protocol.parse_mcp_protocol_version)
+      let allow_modern = endpoint.mode != @config.McpConnectionMode::Stateful
+      match
+        @protocol.newest_compatible_mcp_protocol_version(
+          parsed,
+          allow_stateless_core=allow_modern,
+        ) {
+        Some(version) if version == requested => {
+          let retry = send_discover(fetch, endpoint, version)
+          return negotiation_from_discover(
+            endpoint.mode,
+            decode_discover_http_response(retry),
+          )
+        }
+        Some(version) =>
+          return match @protocol.mcp_protocol_family(version) {
+            @protocol.McpProtocolFamily::InitializeEra =>
+              Negotiation::InitializeEra(version)
+            @protocol.McpProtocolFamily::StatelessCore => {
+              let retry = send_discover(fetch, endpoint, version)
+              negotiation_from_discover(
+                endpoint.mode,
+                decode_discover_http_response(retry),
+              )
+            }
+            @protocol.McpProtocolFamily::Unsupported =>
+              raise McpHttpClientError::UnsupportedProtocolVersion(supported)
+          }
+        None => raise McpHttpClientError::UnsupportedProtocolVersion(supported)
+      }
+    }
+    error => raise error
+  }
+  negotiation_from_discover(endpoint.mode, discover)
+}
+
+///|
+fn negotiation_from_discover(
+  mode : @config.McpConnectionMode,
+  discover : @protocol.McpDiscoverInfo,
+) -> Negotiation raise McpHttpClientError {
+  let allow_modern = mode != @config.McpConnectionMode::Stateful
+  let selected = match
+    @protocol.newest_compatible_mcp_protocol_version(
+      discover.protocol_versions,
+      allow_stateless_core=allow_modern,
+    ) {
+    Some(value) => value
+    None => {
+      if mode == @config.McpConnectionMode::Stateful &&
+        discover.protocol_versions.contains(
+          @protocol.McpProtocolVersion::V2026_07_28,
+        ) {
+        raise McpHttpClientError::ModeProtocolIncompatible(
+          "stateful", "2026-07-28",
+        )
+      }
+      raise McpHttpClientError::UnsupportedProtocolVersion(
+        discover.protocol_versions.map(@protocol.mcp_protocol_version_to_string),
+      )
+    }
+  }
+  match @protocol.mcp_protocol_family(selected) {
+    @protocol.McpProtocolFamily::StatelessCore => {
+      if mode == @config.McpConnectionMode::Stateful {
+        raise McpHttpClientError::ModeProtocolIncompatible(
+          "stateful", "2026-07-28",
+        )
+      }
+      Negotiation::Modern(selected)
+    }
+    @protocol.McpProtocolFamily::InitializeEra =>
+      Negotiation::InitializeEra(selected)
+    @protocol.McpProtocolFamily::Unsupported =>
+      raise McpHttpClientError::UnsupportedProtocolVersion([
+        @protocol.mcp_protocol_version_to_string(selected),
+      ])
+  }
+}
+
+///|
+async fn send_discover(
+  fetch : async (HttpRequest) -> HttpResponse,
+  endpoint : Endpoint,
+  version : @protocol.McpProtocolVersion,
+) -> HttpResponse raise McpHttpClientError {
+  let context = @protocol.mcp_request_context(
+    protocol=version,
     client_name="mcpx",
-    client_version="0.1.3",
+    client_version=MCPX_CLIENT_VERSION,
+  )
+  post_json(
+    fetch,
+    endpoint,
+    build_modern_headers(endpoint.headers, version, "server/discover", None),
+    @protocol.mcp_discover_request(id=1, context),
+  )
+}
+
+///|
+fn decode_discover_http_response(
+  response : HttpResponse,
+) -> @protocol.McpDiscoverInfo raise McpHttpClientError {
+  let json = response_json(response)
+  match @protocol.decode_mcp_discover_response(json, expected_id=1) {
+    Ok(value) => value
+    Err(error) => raise protocol_error_to_http(error)
+  }
+}
+
+///|
+async fn list_tools_modern(
+  fetch : async (HttpRequest) -> HttpResponse,
+  endpoint : Endpoint,
+  version : @protocol.McpProtocolVersion,
+) -> Array[@protocol.McpToolInfo] raise McpHttpClientError {
+  let request = @protocol.mcp_tools_list_request(
+    id=2,
+    client_name="mcpx",
+    client_version=MCPX_CLIENT_VERSION,
   )
   let response = post_json(
     fetch,
     endpoint,
-    build_headers(
+    build_modern_headers(endpoint.headers, version, "tools/list", None),
+    request,
+  )
+  let json = response_json(response)
+  match @protocol.decode_mcp_tool_list_response(json, expected_id=2) {
+    Ok(value) => value
+    Err(error) => raise protocol_error_to_http(error)
+  }
+}
+
+///|
+async fn call_tool_modern(
+  fetch : async (HttpRequest) -> HttpResponse,
+  endpoint : Endpoint,
+  version : @protocol.McpProtocolVersion,
+  tool_name~ : String,
+  arguments~ : Json,
+) -> Json raise McpHttpClientError {
+  let request = @protocol.mcp_tool_call_request(
+    id=2,
+    name=tool_name,
+    arguments~,
+    client_name="mcpx",
+    client_version=MCPX_CLIENT_VERSION,
+  )
+  let response = post_json(
+    fetch,
+    endpoint,
+    build_modern_headers(
       endpoint.headers,
-      rpc_method="tools/call",
-      rpc_name=Some(tool_name),
+      version,
+      "tools/call",
+      Some(tool_name),
     ),
     request,
   )
-  if response.status_code == 400 {
-    if should_try_legacy_fallback(response) {
-      return call_tool_legacy(fetch, endpoint, tool_name~, arguments~)
-    }
-    raise jsonrpc_error(response)
-  }
   let json = response_json(response)
-  @protocol.decode_mcp_result(json, expected_id=1) catch {
-    _ => raise McpHttpClientError::Protocol("mcp protocol error")
+  @protocol.decode_mcp_result(json, expected_id=2) catch {
+    error => raise protocol_error_to_http(error)
   }
 }
 
@@ -67,24 +215,19 @@ pub async fn call_tool(
 async fn list_tools_legacy(
   fetch : async (HttpRequest) -> HttpResponse,
   endpoint : Endpoint,
+  version : @protocol.McpProtocolVersion,
 ) -> Array[@protocol.McpToolInfo] raise McpHttpClientError {
   let session_id = Ref(None)
   let client = @protocol.mcp_client(
     client_name="mcpx",
-    client_version="0.1.3",
-    protocol_version=@protocol.MCP_PROTOCOL_VERSION_LEGACY,
+    client_version=MCPX_CLIENT_VERSION,
+    protocol_version=@protocol.mcp_protocol_version_to_string(version),
   )
   initialize_legacy(fetch, endpoint, client, session_id)
   let list = client.tools_list_request()
-  let list_response = send_json_legacy(
-    fetch,
-    endpoint,
-    session_id,
-    list.message,
-  )
-  let json = payload_json(list_response)
-  client.accept_tools_list_response(list, json) catch {
-    _ => raise McpHttpClientError::Protocol("mcp protocol error")
+  let payload = send_json_legacy(fetch, endpoint, session_id, list.message)
+  client.accept_tools_list_response(list, payload_json(payload)) catch {
+    error => raise McpHttpClientError::Protocol(error.to_string())
   }
 }
 
@@ -92,26 +235,21 @@ async fn list_tools_legacy(
 async fn call_tool_legacy(
   fetch : async (HttpRequest) -> HttpResponse,
   endpoint : Endpoint,
+  version : @protocol.McpProtocolVersion,
   tool_name~ : String,
   arguments~ : Json,
 ) -> Json raise McpHttpClientError {
   let session_id = Ref(None)
   let client = @protocol.mcp_client(
     client_name="mcpx",
-    client_version="0.1.3",
-    protocol_version=@protocol.MCP_PROTOCOL_VERSION_LEGACY,
+    client_version=MCPX_CLIENT_VERSION,
+    protocol_version=@protocol.mcp_protocol_version_to_string(version),
   )
   initialize_legacy(fetch, endpoint, client, session_id)
   let call = client.tool_call_request(name=tool_name, arguments~)
-  let call_response = send_json_legacy(
-    fetch,
-    endpoint,
-    session_id,
-    call.message,
-  )
-  let json = payload_json(call_response)
-  client.accept_tool_call_response(call, json) catch {
-    _ => raise McpHttpClientError::Protocol("mcp protocol error")
+  let payload = send_json_legacy(fetch, endpoint, session_id, call.message)
+  client.accept_tool_call_response(call, payload_json(payload)) catch {
+    error => raise McpHttpClientError::Protocol(error.to_string())
   }
 }
 
@@ -123,16 +261,10 @@ async fn initialize_legacy(
   session_id : Ref[String?],
 ) -> Unit raise McpHttpClientError {
   let init = client.initialize_request()
-  let init_response = send_json_legacy(
-    fetch,
-    endpoint,
-    session_id,
-    init.message,
-  )
-  let init_json = payload_json(init_response)
+  let payload = send_json_legacy(fetch, endpoint, session_id, init.message)
   ignore(
-    client.accept_initialize_response(init, init_json) catch {
-      _ => raise McpHttpClientError::Protocol("mcp protocol error")
+    client.accept_initialize_response(init, payload_json(payload)) catch {
+      error => raise McpHttpClientError::Protocol(error.to_string())
     },
   )
   let initialized = client.initialized_notification()
@@ -146,27 +278,18 @@ async fn send_json_legacy(
   session_id : Ref[String?],
   message : Json,
 ) -> @protocol.McpTransportPayload raise McpHttpClientError {
+  let retain_session = endpoint.mode != @config.McpConnectionMode::Stateless
+  let active_session = if retain_session { session_id.val } else { None }
   let response = post_json(
     fetch,
     endpoint,
-    build_headers_legacy(endpoint.headers, session_id.val),
+    build_headers_legacy(endpoint.headers, active_session),
     message,
   )
-  update_session_id(session_id, response.headers)
-  if response.status_code != 200 && response.status_code != 202 {
-    raise McpHttpClientError::HttpStatus(response.status_code)
+  if retain_session {
+    update_session_id(session_id, response.headers)
   }
-  let payload = @protocol.decode_mcp_transport_payload(
-    @protocol.mcp_transport_response(
-      status_code=response.status_code,
-      content_type=response.content_type,
-      body=response.body,
-    ),
-  )
-  match payload {
-    Ok(value) => value
-    Err(_) => raise McpHttpClientError::Protocol("mcp protocol error")
-  }
+  response_payload(response)
 }
 
 ///|
@@ -182,27 +305,44 @@ async fn post_json(
     headers,
     body: message.stringify(),
   }) catch {
-    err => raise McpHttpClientError::Protocol(err.to_string())
+    error => raise McpHttpClientError::Network(error.to_string())
   }
 }
 
 ///|
 fn response_json(response : HttpResponse) -> Json raise McpHttpClientError {
+  payload_json(response_payload(response))
+}
+
+///|
+fn response_payload(
+  response : HttpResponse,
+) -> @protocol.McpTransportPayload raise McpHttpClientError {
   if response.status_code != 200 && response.status_code != 202 {
+    let json = @json.parse(response.body) catch {
+      _ => raise McpHttpClientError::HttpStatus(response.status_code)
+    }
+    if jsonrpc_error_code(json) is None {
+      raise McpHttpClientError::HttpStatus(response.status_code)
+    }
+    ignore(
+      @protocol.decode_mcp_result(json, expected_id=1) catch {
+        error => raise protocol_error_to_http(error)
+      },
+    )
     raise McpHttpClientError::HttpStatus(response.status_code)
   }
-  let payload = @protocol.decode_mcp_transport_payload(
-    @protocol.mcp_transport_response(
-      status_code=response.status_code,
-      content_type=response.content_type,
-      body=response.body,
-    ),
-  )
-  let payload = match payload {
+  match
+    @protocol.decode_mcp_transport_payload(
+      @protocol.mcp_transport_response(
+        status_code=response.status_code,
+        content_type=response.content_type,
+        body=response.body,
+      ),
+    ) {
     Ok(value) => value
-    Err(_) => raise McpHttpClientError::Protocol("mcp protocol error")
+    Err(error) => raise protocol_error_to_http(error)
   }
-  payload_json(payload)
 }
 
 ///|
@@ -210,7 +350,7 @@ fn payload_json(
   payload : @protocol.McpTransportPayload,
 ) -> Json raise McpHttpClientError {
   @protocol.expect_json_payload(payload) catch {
-    _ => raise McpHttpClientError::Protocol("mcp protocol error")
+    error => raise protocol_error_to_http(error)
   }
 }
 
@@ -230,15 +370,16 @@ fn build_headers_legacy(
 }
 
 ///|
-fn build_headers(
+fn build_modern_headers(
   base_headers : Map[String, String],
-  rpc_method~ : String,
-  rpc_name~ : String?,
+  version : @protocol.McpProtocolVersion,
+  rpc_method : String,
+  rpc_name : String?,
 ) -> Map[String, String] {
-  let headers = base_headers.copy()
-  headers["content-type"] = "application/json"
-  headers["accept"] = "application/json, text/event-stream"
-  headers["MCP-Protocol-Version"] = @protocol.MCP_PROTOCOL_VERSION
+  let headers = build_headers_legacy(base_headers, None)
+  headers["MCP-Protocol-Version"] = @protocol.mcp_protocol_version_to_string(
+    version,
+  )
   headers["Mcp-Method"] = rpc_method
   match rpc_name {
     Some(value) => headers["Mcp-Name"] = value
@@ -248,56 +389,19 @@ fn build_headers(
 }
 
 ///|
-fn should_try_legacy_fallback(response : HttpResponse) -> Bool {
-  if response.status_code != 400 {
+fn is_clear_legacy_signal(response : HttpResponse) -> Bool {
+  if response.status_code != 400 &&
+    response.status_code != 404 &&
+    response.status_code != 405 {
     return false
   }
   if response.body.trim().is_empty() {
-    return true
+    return response.status_code == 400
   }
-  let json = @json.parse(response.body) catch { _ => return true }
+  let json = @json.parse(response.body) catch { _ => return false }
   match jsonrpc_error_code(json) {
-    Some(code) => !is_protocol_defined_error_code(code)
-    None => true
-  }
-}
-
-///|
-fn jsonrpc_error(response : HttpResponse) -> McpHttpClientError {
-  let json = @json.parse(response.body) catch {
-    _ => return McpHttpClientError::HttpStatus(response.status_code)
-  }
-  match jsonrpc_error_detail(json) {
-    Some((code, message)) =>
-      McpHttpClientError::Protocol(
-        "json-rpc error " + code.to_string() + ": " + message,
-      )
-    None => McpHttpClientError::HttpStatus(response.status_code)
-  }
-}
-
-///|
-fn jsonrpc_error_detail(json : Json) -> (Int, String)? {
-  match json {
-    Object(obj) =>
-      match obj.get("error") {
-        Some(Object(error)) => {
-          let code = match error.get("code") {
-            Some(Number(value, ..)) => Some(value.to_int())
-            _ => None
-          }
-          let message = match error.get("message") {
-            Some(String(value)) => Some(value)
-            _ => None
-          }
-          match (code, message) {
-            (Some(code), Some(message)) => Some((code, message))
-            _ => None
-          }
-        }
-        _ => None
-      }
-    _ => None
+    Some(-32601) => true
+    _ => false
   }
 }
 
@@ -318,15 +422,20 @@ fn jsonrpc_error_code(json : Json) -> Int? {
 }
 
 ///|
-fn is_protocol_defined_error_code(code : Int) -> Bool {
-  // Keep -32000-style implementation errors eligible for legacy session fallback.
-  code == -32700 || // Parse error
-  code == -32600 || // Invalid Request
-  code == -32601 || // Method not found
-  code == -32602 || // Invalid params
-  code == -32603 || // Internal error
-  code == -32004 || // UnsupportedProtocolVersion; not retry legacy stateful session approach
-  code == -32001 // HeaderMismatch
+fn protocol_error_to_http(
+  error : @protocol.McpProtocolError,
+) -> McpHttpClientError {
+  match error {
+    @protocol.McpProtocolError::HeaderMismatch(message) =>
+      HeaderMismatch(message)
+    @protocol.McpProtocolError::MissingRequiredClientCapability(message) =>
+      MissingRequiredClientCapability(message)
+    @protocol.McpProtocolError::UnsupportedProtocolVersion(_, supported) =>
+      UnsupportedProtocolVersion(supported)
+    @protocol.McpProtocolError::RemoteError(code, message) =>
+      RemoteError(code, message)
+    @protocol.McpProtocolError::InvalidResponse(message) => Protocol(message)
+  }
 }
 
 ///|
