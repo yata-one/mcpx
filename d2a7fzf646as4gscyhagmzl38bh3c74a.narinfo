@@ -1,0 +1,10 @@
+StorePath: /nix/store/d2a7fzf646as4gscyhagmzl38bh3c74a-mcpx
+URL: nar/16gkd00x8vjizjkrxiym16g8pgfwyvbl34246dska4da4jdl7k64.nar.zst
+Compression: zstd
+FileHash: sha256:16gkd00x8vjizjkrxiym16g8pgfwyvbl34246dska4da4jdl7k64
+FileSize: 756984
+NarHash: sha256:1d6nhsgwzmlm79m36agmbvfiqf2wa0aa6x0aqihnsw4inwzv964h
+NarSize: 2317592
+References: l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67
+Deriver: rw7p4y7fvdskbcz55lng2c3chplmgwj0-mcpx.drv
+Sig: yata-one-mcpx-1:dTi6HoY3cl7yFJq/XROeWBrxaFiJUKPIFBojwJ8ii9CaOKL0OoBP3iN+63NOubnhStSj5lKAm0F31NJz9ak7Aw==
