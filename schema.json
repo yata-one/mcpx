@@ -55,6 +55,9 @@
         "auth": {
           "$ref": "#/$defs/auth"
         },
+        "protocol": {
+          "$ref": "#/$defs/protocol"
+        },
         "lifecycle": {
           "$ref": "#/$defs/lifecycle"
         },
@@ -100,6 +103,19 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "OAuth scopes to request."
+        }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "description": "MCP connection handling. Protocol-version negotiation and request routing remain independent of this mode.",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["auto", "stateful", "stateless"],
+          "description": "'auto' detects session handling, 'stateful' retains server-issued session state, and 'stateless' never retains protocol-level session state."
         }
       }
     },
