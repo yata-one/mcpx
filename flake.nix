@@ -49,22 +49,10 @@
             tinyccForMoonbit = if pkgs.stdenv.hostPlatform.isLinux then pkgs.tinycc else null;
           };
 
-          # Development still needs the registry eagerly to construct MOON_HOME.
-          # Unlike a flake input, this fixed-output fetch is only realized when
-          # the development environment is requested.
-          moonRegistryIndex = pkgs.fetchgit {
-            url = "https://mooncakes.io/git/index";
-            rev = "67b0102dad176a6740ae3af60f34966632ce7c30";
-            hash = if pkgs.stdenv.hostPlatform.isDarwin then
-              "sha256-l3y0HrnIdB+1QweCJkkj5TKciZd/9hS7lCwB4Vawrbo="
-            else
-              "sha256-5b2kGVsg8W7lJSx6r0RtNK++rVprqmXaR/ipDQ0V74Q=";
-          };
-
           baseMoonHome = pkgs.moonPlatform.bundleWithRegistry {
             cachedRegistry = pkgs.moonPlatform.buildCachedRegistry {
               moonModJson = ./moon.mod.json;
-              registryIndexSrc = moonRegistryIndex;
+              registryIndexSrc = ./nix/moon-registry;
             };
           };
 

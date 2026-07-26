@@ -2,29 +2,16 @@
   lib,
   stdenv,
   moonPlatform,
-  fetchgit,
   tinyccForMoonbit ? null,
 }:
 
-let
-  # Build-only fixed-output source. Keeping the registry out of flake inputs
-  # prevents Nix from fetching it when a substituted mcpx binary is available.
-  moonRegistryIndex = fetchgit {
-    url = "https://mooncakes.io/git/index";
-    rev = "67b0102dad176a6740ae3af60f34966632ce7c30";
-    # The registry contains case-colliding paths. fetchgit's recursive output
-    # therefore differs between Darwin's case-insensitive filesystem and Linux.
-    hash = if stdenv.hostPlatform.isDarwin then
-      "sha256-l3y0HrnIdB+1QweCJkkj5TKciZd/9hS7lCwB4Vawrbo="
-    else
-      "sha256-5b2kGVsg8W7lJSx6r0RtNK++rVprqmXaR/ipDQ0V74Q=";
-  };
-in
 moonPlatform.buildMoonPackage {
   name = "mcpx";
   src = ./.;
   moonModJson = ./moon.mod.json;
-  inherit moonRegistryIndex;
+  # Minimal registry snapshot containing only the locked direct dependencies.
+  # It is part of the source tree, so builds never fetch the global registry.
+  moonRegistryIndex = ./nix/moon-registry;
   moonTarget = "native";
   moonFlags = [ "cli" ];
 
