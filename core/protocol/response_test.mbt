@@ -1,4 +1,44 @@
 ///|
+test "mcp response: decodes typed modern protocol errors" {
+  let unsupported : Result[Json, McpProtocolError] = try
+    decode_mcp_result(
+      {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "error": {
+          "code": -32022,
+          "message": "unsupported",
+          "data": { "requested": "2026-07-28", "supported": ["2025-11-25"] },
+        },
+      },
+      expected_id=1,
+    )
+    |> Ok
+  catch {
+    error => Err(error)
+  }
+  @debug.debug_inspect(
+    unsupported,
+    content="Err(UnsupportedProtocolVersion(Some(\"2026-07-28\"), [\"2025-11-25\"]))",
+  )
+  try
+    decode_mcp_result(
+      {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "error": { "code": -32020, "message": "bad header" },
+      },
+      expected_id=1,
+    )
+  catch {
+    HeaderMismatch(message) => inspect(message, content="bad header")
+    _ => fail("expected header mismatch")
+  } noraise {
+    _ => fail("expected error")
+  }
+}
+
+///|
 test "mcp client response: decodes initialize tool list and call result" {
   let init = Json::object({
     "jsonrpc": Json::string("2.0"),

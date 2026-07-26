@@ -17,7 +17,8 @@ test "protocol version: parses supported and unknown versions" {
     content="true",
   )
   inspect(
-    parse_mcp_protocol_version("future") == McpProtocolVersion::Unknown("future"),
+    parse_mcp_protocol_version("future") ==
+    McpProtocolVersion::Unknown("future"),
     content="true",
   )
 }
@@ -47,6 +48,31 @@ test "protocol version: routes request family only by version" {
   inspect(
     mcp_protocol_family(McpProtocolVersion::Unknown("future")) ==
     McpProtocolFamily::Unsupported,
+    content="true",
+  )
+}
+
+///|
+test "protocol version: selects newest implemented compatible version explicitly" {
+  let advertised = [
+    McpProtocolVersion::V2025_03_26,
+    McpProtocolVersion::V2026_07_28,
+    McpProtocolVersion::V2025_11_25,
+  ]
+  inspect(
+    newest_compatible_mcp_protocol_version(
+      advertised,
+      allow_stateless_core=true,
+    ) ==
+    Some(McpProtocolVersion::V2026_07_28),
+    content="true",
+  )
+  inspect(
+    newest_compatible_mcp_protocol_version(
+      advertised,
+      allow_stateless_core=false,
+    ) ==
+    Some(McpProtocolVersion::V2025_11_25),
     content="true",
   )
 }

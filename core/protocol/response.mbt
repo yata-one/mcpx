@@ -153,8 +153,43 @@ fn decode_mcp_error(json : Json) -> McpProtocolError {
         Some(String(value)) => value
         _ => "unknown error"
       }
-      McpProtocolError::RemoteError(code, message)
+      match code {
+        -32020 => McpProtocolError::HeaderMismatch(message)
+        -32021 => McpProtocolError::MissingRequiredClientCapability(message)
+        -32022 => {
+          let (requested, supported) = decode_unsupported_version_data(
+            obj.get("data"),
+          )
+          McpProtocolError::UnsupportedProtocolVersion(requested, supported)
+        }
+        _ => McpProtocolError::RemoteError(code, message)
+      }
     }
     _ => McpProtocolError::RemoteError(-1, "invalid error")
+  }
+}
+
+///|
+fn decode_unsupported_version_data(data : Json?) -> (String?, Array[String]) {
+  match data {
+    Some(Object(obj)) => {
+      let requested = match obj.get("requested") {
+        Some(String(value)) => Some(value)
+        _ => None
+      }
+      let supported = []
+      match obj.get("supported") {
+        Some(Array(values)) =>
+          for value in values {
+            match value {
+              String(version) => supported.push(version)
+              _ => ()
+            }
+          }
+        _ => ()
+      }
+      (requested, supported)
+    }
+    _ => (None, [])
   }
 }

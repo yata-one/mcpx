@@ -49,12 +49,27 @@ pub fn mcp_protocol_version_to_string(version : McpProtocolVersion) -> String {
 }
 
 ///|
-pub fn mcp_protocol_family(
-  version : McpProtocolVersion,
-) -> McpProtocolFamily {
+pub fn newest_compatible_mcp_protocol_version(
+  advertised : Array[McpProtocolVersion],
+  allow_stateless_core~ : Bool,
+) -> McpProtocolVersion? {
+  let preference = if allow_stateless_core {
+    [V2026_07_28, V2025_11_25, V2025_06_18, V2025_03_26]
+  } else {
+    [V2025_11_25, V2025_06_18, V2025_03_26]
+  }
+  for candidate in preference {
+    if advertised.contains(candidate) {
+      return Some(candidate)
+    }
+  }
+  None
+}
+
+///|
+pub fn mcp_protocol_family(version : McpProtocolVersion) -> McpProtocolFamily {
   match version {
-    V2025_03_26 | V2025_06_18 | V2025_11_25 =>
-      McpProtocolFamily::InitializeEra
+    V2025_03_26 | V2025_06_18 | V2025_11_25 => McpProtocolFamily::InitializeEra
     V2026_07_28 => McpProtocolFamily::StatelessCore
     Unknown(_) => McpProtocolFamily::Unsupported
   }
