@@ -1,8 +1,8 @@
 version 1
 key hub/work-item/eacb7734/meta
 kind work-item
-clock toshiki-higa <toshiki-higa@localhost>=1
-timestamp 1785056976
+clock toshiki-higa <toshiki-higa@localhost>=2
+timestamp 1785057117
 node toshiki-higa <toshiki-higa@localhost>
 deleted 0
 
@@ -10,7 +10,7 @@ work-item eacb7734
 title Adopt MCP 2026-07-28 stateless protocol
 author toshiki-higa <toshiki-higa@localhost>
 created 1785056976
-updated 1785056976
+updated 1785057117
 state open
 source refs/heads/feat/adopt-mcp-20260728
 source-repo yata-one/mcpx
@@ -21,10 +21,162 @@ target-commit 6745ac42c392894909e6dd1524e2fdc21560c795
 
 ## Summary
 
-- adopt stateless MCP 2026-07-28 request metadata and HTTP headers
-- add protocol-version negotiation and `server/discover` support
-- add configurable MCP connection modes and clearer negotiation errors
-- cover negotiated HTTP behavior and discovery decoding with tests
+Adopt the MCP `2026-07-28` release-candidate stateless wire contract for the mcpx client surface (`tools/list` and `tools/call`) while preserving initialize-era compatibility.
+
+> The specification remains an RC until 2026-07-28. Constants and schemas must be reconciled with the final specification before merge.
+
+## Goals
+
+- support stateless MCP `2026-07-28` over Streamable HTTP;
+- preserve interoperability with `2025-03-26`, `2025-06-18`, and `2025-11-25` servers;
+- keep transport, connection mode, protocol version, and stdio process lifecycle independent;
+- avoid treating modern protocol, authentication, network, timeout, rate-limit, or server errors as legacy fallback signals.
+
+## Scope
+
+Included:
+
+- `server/discover` negotiation;
+- `tools/list` and `tools/call`;
+- modern request `_meta` and HTTP routing headers;
+- initialize-era fallback and optional session retention;
+- typed negotiation errors and actionable CLI rendering.
+
+Out of scope:
+
+- resources and prompts;
+- MRTR and `subscriptions/listen`;
+- Tasks and Apps extensions;
+- persistent discovery caching;
+- automatic stateless stdio probing.
+
+## Configuration and routing
+
+```jsonc
+{
+  "mcpServers": {
+    "example": {
+      "transport": "http",
+      "url": "https://example.com/mcp",
+      "protocol": { "mode": "auto" }
+    }
+  }
+}
+```
+
+Accepted connection modes are `auto`, `stateful`, and `stateless`. HTTP defaults to `auto`; omitted stdio mode preserves existing initialize-era behavior.
+
+Connection mode controls session handling only. Request encoding is always selected by the negotiated protocol version:
+
+| Version | Request family |
+| --- | --- |
+| `2025-03-26` | initialize era |
+| `2025-06-18` | initialize era |
+| `2025-11-25` | initialize era |
+| `2026-07-28` | stateless core |
+| other | unsupported |
+
+Invariants:
+
+- `stateless` never retains or sends `Mcp-Session-Id`;
+- `2026-07-28` never uses protocol-level sessions;
+- a retained session ID implies stateful initialize-era operation;
+- explicit `stateful` plus a modern-only server returns a mode/protocol incompatibility error;
+- stdio `lifecycle.mode` controls process reuse and does not imply MCP session state.
+
+## Negotiation behavior
+
+### `auto`
+
+1. Probe with `server/discover`.
+2. On success, select `2026-07-28` with stateless handling.
+3. On `UnsupportedProtocolVersion` (`-32022`), inspect `data.supported` and select the newest implemented compatible version.
+4. Fall back to initialize-era negotiation only for a tested legacy signal, such as `MethodNotFound` (`-32601`) or a recognized legacy HTTP response shape.
+5. If initialize returns a session ID, retain it; otherwise remain sessionless.
+
+### `stateful`
+
+Negotiate independently from mode and prefer the newest advertised initialize-era version. Retain and resend a server-issued session ID. Reject servers that support only `2026-07-28`.
+
+### `stateless`
+
+Negotiate independently from mode and prefer the newest implemented version. Initialize-era fallback is allowed, but any issued session ID is discarded.
+
+No fallback occurs for `-32020`, `-32021`, exhausted `-32022`, modern `-32602`, authentication failures, rate limits, `5xx`, timeout/DNS/TLS/connection errors, or malformed responses from a known-modern peer.
+
+## `2026-07-28` wire contract
+
+Every modern request contains:
+
+```json
+"_meta": {
+  "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+  "io.modelcontextprotocol/clientInfo": {
+    "name": "mcpx",
+    "version": "0.1.4"
+  },
+  "io.modelcontextprotocol/clientCapabilities": {}
+}
+```
+
+Every modern HTTP POST sends:
+
+```http
+MCP-Protocol-Version: 2026-07-28
+Mcp-Method: <json-rpc-method>
+```
+
+`tools/call` additionally sends `Mcp-Name: <tool-name>`. Modern requests never send `Mcp-Session-Id`. JSON and request-scoped SSE responses remain supported; standalone streams, replay/resume, and automatic retry are out of scope.
+
+Discovery decodes supported versions, capabilities, instructions, and server identity. Response metadata is retained internally for future cache hints and extensions. The deployed RC form `result.serverInfo` is accepted alongside canonical `_meta["io.modelcontextprotocol/serverInfo"]`.
+
+## stdio behavior
+
+This delivery preserves existing initialize-era stdio behavior:
+
+- omitted mode or explicit `stateful`: existing behavior;
+- explicit `auto` or `stateless`: clear unsupported-mode error.
+
+Safe stdio auto-detection is a follow-up: spawn a disposable sibling process, probe it with a bounded timeout, reap it, then spawn the real process in the selected protocol family.
+
+## Validation
+
+Completed on the implementation branch:
+
+```text
+moon check --target native --deny-warn: passed
+moon test --target native --no-render: 204 passed
+moon check --target wasm-gc: passed
+moon check --target js: passed
+scripts/e2e.sh: passed
+scripts/benchmark.sh: passed
+nix build --accept-flake-config: passed
+```
+
+Live RC interoperability checked against `https://stateless.mcpjam.com/mcp`:
+
+- `server/discover` passed;
+- `tools/list` passed;
+- canonical `supportedVersions` decoded;
+- absent cache hints decode safely.
+
+## Remaining merge gates
+
+- reconcile constants and schemas with the final `2026-07-28` specification;
+- run official SDK/conformance interoperability checks;
+- verify Linux/macOS CI and binary-cache publication;
+- keep safe stdio probing as a separately scoped follow-up.
+
+## Acceptance criteria
+
+- connection mode and protocol version remain independent;
+- no request is routed based only on connection mode;
+- modern HTTP performs no initialize handshake and sends no session ID;
+- initialize-era HTTP remains compatible with sessionful and sessionless servers;
+- explicit stateless mode never retains a session ID;
+- modern errors cannot be mistaken for legacy fallback signals;
+- existing stdio users remain on the compatible default path;
+- native, JS, wasm, E2E, benchmark, and Nix checks pass.
 
 ## Tracking
 
