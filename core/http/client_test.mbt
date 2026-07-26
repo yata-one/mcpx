@@ -9,7 +9,7 @@ async test "core http: auto discovers then lists over MCP 2026" {
           status_code=200,
           content_type=Some("application/json"),
           body=(
-            #|{"jsonrpc":"2.0","id":1,"result":{"protocolVersions":["2026-07-28"],"capabilities":{}},"_meta":{"io.modelcontextprotocol/serverInfo":{"name":"mock","version":"1"}}}
+            #|{"jsonrpc":"2.0","id":1,"result":{"resultType":"complete","supportedVersions":["2026-07-28"],"capabilities":{},"_meta":{"io.modelcontextprotocol/serverInfo":{"name":"mock","version":"1"}}}}
           ),
         )
       } else {
@@ -46,7 +46,7 @@ async test "core http: modern call sends method name and preserves arguments" {
           status_code=200,
           content_type=Some("application/json"),
           body=(
-            #|{"jsonrpc":"2.0","id":1,"result":{"protocolVersions":["2026-07-28"],"capabilities":{}}}
+            #|{"jsonrpc":"2.0","id":1,"result":{"resultType":"complete","supportedVersions":["2026-07-28"],"capabilities":{}}}
           ),
         )
       } else {

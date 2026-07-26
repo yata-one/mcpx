@@ -10,6 +10,9 @@ pub struct McpDiscoverInfo {
   capabilities : Json
   instructions : String?
   response_meta : McpResponseMeta
+  result_type : String
+  ttl_ms : Int
+  cache_scope : String
 } derive(Debug)
 
 ///|
@@ -26,10 +29,6 @@ pub fn decode_mcp_discover_response(
   response : Json,
   expected_id~ : Int,
 ) -> Result[McpDiscoverInfo, McpProtocolError] {
-  let root = match response {
-    Object(value) => value
-    _ => return Err(InvalidResponse("discover response must be object"))
-  }
   let result = decode_mcp_result(response, expected_id~) catch {
     error => return Err(error)
   }
@@ -37,37 +36,62 @@ pub fn decode_mcp_discover_response(
     Object(value) => value
     _ => return Err(InvalidResponse("discover result must be object"))
   }
-  let versions_json = match result.get("protocolVersions") {
+  let result_type = match result.get("resultType") {
+    Some(String("complete")) => "complete"
+    Some(String(value)) =>
+      return Err(InvalidResponse("unsupported discover resultType: " + value))
+    _ => return Err(InvalidResponse("discover result missing resultType"))
+  }
+  let versions_json = match result.get("supportedVersions") {
     Some(Array(value)) => value
-    _ => return Err(InvalidResponse("discover result missing protocolVersions"))
+    _ => return Err(InvalidResponse("discover result missing supportedVersions"))
   }
   let versions = []
   for value in versions_json {
     match value {
       String(version) => versions.push(parse_mcp_protocol_version(version))
       _ =>
-        return Err(InvalidResponse("discover protocol version must be string"))
+        return Err(InvalidResponse("discover supported version must be string"))
     }
   }
   if versions.is_empty() {
-    return Err(InvalidResponse("discover protocolVersions must not be empty"))
+    return Err(InvalidResponse("discover supportedVersions must not be empty"))
   }
   let capabilities = result.get("capabilities").unwrap_or(Json::empty_object())
   let instructions = match result.get("instructions") {
     Some(String(value)) => Some(value)
-    Some(_) =>
-      return Err(InvalidResponse("discover instructions must be string"))
+    Some(_) => return Err(InvalidResponse("discover instructions must be string"))
     None => None
   }
-  let raw_meta = root.get("_meta").unwrap_or(Json::empty_object())
-  let server_info = match raw_meta {
+  let raw_meta = result.get("_meta").unwrap_or(Json::empty_object())
+  let namespaced_server_info = match raw_meta {
     Object(meta) => meta.get("io.modelcontextprotocol/serverInfo")
     _ => None
+  }
+  // RC SDKs and deployed reference servers may still emit result.serverInfo.
+  let server_info = match namespaced_server_info {
+    Some(value) => Some(value)
+    None => result.get("serverInfo")
+  }
+  let ttl_ms = match result.get("ttlMs") {
+    Some(Number(value, ..)) if value.trunc() == value && value >= 0.0 =>
+      value.to_int()
+    Some(_) => return Err(InvalidResponse("discover ttlMs must be non-negative integer"))
+    None => 0
+  }
+  let cache_scope = match result.get("cacheScope") {
+    Some(String("public")) => "public"
+    Some(String("private")) => "private"
+    Some(_) => return Err(InvalidResponse("discover cacheScope must be public or private"))
+    None => "private"
   }
   Ok({
     protocol_versions: versions,
     capabilities,
     instructions,
     response_meta: { server_info, raw: raw_meta },
+    result_type,
+    ttl_ms,
+    cache_scope,
   })
 }
