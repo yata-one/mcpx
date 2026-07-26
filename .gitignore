@@ -1,7 +1,8 @@
 # MacOS
 .DS_Store
 
-# Nix binary cache signing keys
+# Nix
+.direnv/
 cache-private-key.pem
 cache-public-key.pem
 
