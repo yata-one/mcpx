@@ -10,7 +10,6 @@ import {
   "yata-one/mcpx/core/protocol" @mcp_client,
   "yata-one/mcpx/core/search",
   "yata-one/mcpx/native/paths" @app_paths,
-  "yata-one/mcpx/native/daemon" @daemon_stdio,
   "yata-one/mcpx/native/storage",
   "yata-one/mcpx/cli/daemon" @mcpx_daemon,
   "yata-one/mcpx/native/http" @mcp_http,

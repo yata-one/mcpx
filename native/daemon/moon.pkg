@@ -1,6 +1,0 @@
-supported_targets = "native+llvm"
-
-options(
-  "native-stub": [ "daemon_stdio.c" ],
-  targets: { "daemon_stdio.mbt": [ "native", "llvm" ] },
-)

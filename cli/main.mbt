@@ -10,9 +10,6 @@ async fn run() -> Unit {
   let home = @sys.get_env_var("HOME").unwrap_or(".")
   let config_home = @sys.get_env_var("XDG_CONFIG_HOME")
   if @sys.get_env_var("MCPX_INTERNAL_DAEMON") == Some("serve") {
-    if !@daemon_stdio.redirect_stdio_to_devnull() {
-      return
-    }
     run_internal_daemon_async(home~, config_home~)
     return
   }
