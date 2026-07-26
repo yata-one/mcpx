@@ -14,10 +14,6 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay/v0.10.4+2cc641edf+75c7e1f";
-    moon-registry = {
-      url = "git+https://mooncakes.io/git/index";
-      flake = false;
-    };
   };
 
   outputs = inputs:
@@ -37,7 +33,6 @@
           {
             mcpx = final.callPackage ./package.nix {
               moonPlatform = final.moonPlatform or moonAttrs.moonPlatform;
-              moonRegistryIndex = inputs.moon-registry;
               tinyccForMoonbit = if final.stdenv.hostPlatform.isLinux then final.tinycc else null;
             };
           };
@@ -51,14 +46,22 @@
           };
 
           mcpx = pkgs.callPackage ./package.nix {
-            moonRegistryIndex = inputs.moon-registry;
             tinyccForMoonbit = if pkgs.stdenv.hostPlatform.isLinux then pkgs.tinycc else null;
+          };
+
+          # Development still needs the registry eagerly to construct MOON_HOME.
+          # Unlike a flake input, this fixed-output fetch is only realized when
+          # the development environment is requested.
+          moonRegistryIndex = pkgs.fetchgit {
+            url = "https://mooncakes.io/git/index";
+            rev = "67b0102dad176a6740ae3af60f34966632ce7c30";
+            hash = "sha256-l3y0HrnIdB+1QweCJkkj5TKciZd/9hS7lCwB4Vawrbo=";
           };
 
           baseMoonHome = pkgs.moonPlatform.bundleWithRegistry {
             cachedRegistry = pkgs.moonPlatform.buildCachedRegistry {
               moonModJson = ./moon.mod.json;
-              registryIndexSrc = inputs.moon-registry;
+              registryIndexSrc = moonRegistryIndex;
             };
           };
 

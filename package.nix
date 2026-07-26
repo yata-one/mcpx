@@ -2,10 +2,19 @@
   lib,
   stdenv,
   moonPlatform,
-  moonRegistryIndex,
+  fetchgit,
   tinyccForMoonbit ? null,
 }:
 
+let
+  # Build-only fixed-output source. Keeping the registry out of flake inputs
+  # prevents Nix from fetching it when a substituted mcpx binary is available.
+  moonRegistryIndex = fetchgit {
+    url = "https://mooncakes.io/git/index";
+    rev = "67b0102dad176a6740ae3af60f34966632ce7c30";
+    hash = "sha256-l3y0HrnIdB+1QweCJkkj5TKciZd/9hS7lCwB4Vawrbo=";
+  };
+in
 moonPlatform.buildMoonPackage {
   name = "mcpx";
   src = ./.;
