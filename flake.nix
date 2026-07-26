@@ -55,7 +55,10 @@
           moonRegistryIndex = pkgs.fetchgit {
             url = "https://mooncakes.io/git/index";
             rev = "67b0102dad176a6740ae3af60f34966632ce7c30";
-            hash = "sha256-l3y0HrnIdB+1QweCJkkj5TKciZd/9hS7lCwB4Vawrbo=";
+            hash = if pkgs.stdenv.hostPlatform.isDarwin then
+              "sha256-l3y0HrnIdB+1QweCJkkj5TKciZd/9hS7lCwB4Vawrbo="
+            else
+              "sha256-5b2kGVsg8W7lJSx6r0RtNK++rVprqmXaR/ipDQ0V74Q=";
           };
 
           baseMoonHome = pkgs.moonPlatform.bundleWithRegistry {
