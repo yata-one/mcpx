@@ -1,0 +1,31 @@
+version 1
+key hub/work-item/eacb7734/meta
+kind work-item
+clock toshiki-higa <toshiki-higa@localhost>=1
+timestamp 1785056976
+node toshiki-higa <toshiki-higa@localhost>
+deleted 0
+
+work-item eacb7734
+title Adopt MCP 2026-07-28 stateless protocol
+author toshiki-higa <toshiki-higa@localhost>
+created 1785056976
+updated 1785056976
+state open
+source refs/heads/feat/adopt-mcp-20260728
+source-repo yata-one/mcpx
+source-ref refs/heads/feat/adopt-mcp-20260728
+source-commit c304a90c1fc689a13d247346c83320b3eccc18e9
+target refs/heads/main
+target-commit 6745ac42c392894909e6dd1524e2fdc21560c795
+
+## Summary
+
+- adopt stateless MCP 2026-07-28 request metadata and HTTP headers
+- add protocol-version negotiation and `server/discover` support
+- add configurable MCP connection modes and clearer negotiation errors
+- cover negotiated HTTP behavior and discovery decoding with tests
+
+## Tracking
+
+Closes #83b9cd22
