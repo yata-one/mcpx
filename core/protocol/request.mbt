@@ -60,7 +60,11 @@ pub fn mcp_tools_list_request(
   client_version~ : String,
 ) -> Json {
   let params = Map([])
-  params["_meta"] = mcp_request_meta(client_name~, client_version~)
+  params["_meta"] = mcp_request_meta(mcp_request_context(
+    protocol=McpProtocolVersion::V2026_07_28,
+    client_name~,
+    client_version~,
+  ))
   mcp_request(id, "tools/list", Some(Json::object(params)))
 }
 
@@ -87,7 +91,11 @@ pub fn mcp_tool_call_request(
   let params = Map([])
   params["name"] = Json::string(name)
   params["arguments"] = arguments
-  params["_meta"] = mcp_request_meta(client_name~, client_version~)
+  params["_meta"] = mcp_request_meta(mcp_request_context(
+    protocol=McpProtocolVersion::V2026_07_28,
+    client_name~,
+    client_version~,
+  ))
   mcp_request(id, "tools/call", Some(Json::object(params)))
 }
 
@@ -121,16 +129,3 @@ fn json_int(value : Int) -> Json {
   Json::number(Double::from_int(value), repr=value.to_string())
 }
 
-///|
-fn mcp_request_meta(client_name~ : String, client_version~ : String) -> Json {
-  let meta = Map([])
-  meta["io.modelcontextprotocol/protocolVersion"] = Json::string(
-    MCP_PROTOCOL_VERSION,
-  )
-  meta["io.modelcontextprotocol/clientInfo"] = Json::object({
-    "name": Json::string(client_name),
-    "version": Json::string(client_version),
-  })
-  meta["io.modelcontextprotocol/clientCapabilities"] = Json::object({})
-  Json::object(meta)
-}
