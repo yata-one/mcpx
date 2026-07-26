@@ -45,7 +45,7 @@ jobs:
       - name: Build
         run: |
           set -euo pipefail
-          nix build --out-link result
+          nix build --accept-flake-config --out-link result
 
       - name: Create signed binary cache
         env:
