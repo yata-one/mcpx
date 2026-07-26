@@ -16,8 +16,16 @@ pub fn mcp_http_status_code(error : McpHttpError) -> Int? {
 ///|
 pub fn mcp_http_is_protocol_error(error : McpHttpError) -> Bool {
   match error {
-    Protocol(_) => true
+    Protocol(_) | Negotiation(_) => true
     _ => false
+  }
+}
+
+///|
+pub fn mcp_http_negotiation_message(error : McpHttpError) -> String? {
+  match error {
+    Negotiation(message) => Some(message)
+    _ => None
   }
 }
 
