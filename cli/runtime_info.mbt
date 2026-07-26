@@ -31,7 +31,11 @@ async fn run_info(
         Err(message) => return error_result(message)
       }
       match resolved_server.transport {
-        @config.ServerTransport::Stdio =>
+        @config.ServerTransport::Stdio => {
+          match unsupported_stdio_protocol_mode(resolved_server) {
+            Some(message) => return error_result(message)
+            None => ()
+          }
           if is_keep_alive_server(resolved_server) {
             run_info_daemon(
               target_server,
@@ -43,6 +47,7 @@ async fn run_info(
           } else {
             run_info_stdio(target_server, resolved_server, command.tool)
           }
+        }
         @config.ServerTransport::Http =>
           match resolved_server.url {
             None => error_result("server has no url: " + target_server)
@@ -63,6 +68,7 @@ async fn run_info(
                 headers~,
                 tool=command.tool,
                 filter_server=Some(resolved_server),
+                mode=@config.effective_connection_mode(resolved_server),
               )
             }
           }
@@ -197,8 +203,9 @@ async fn run_info_url(
   headers~ : Map[String, String],
   tool~ : String?,
   filter_server~ : @config.McpServerConfig?,
+  mode? : @config.McpConnectionMode = @config.McpConnectionMode::Auto,
 ) -> String {
-  let tools = @mcp_http.http_mcp_list_tools(url~, headers~) catch {
+  let tools = @mcp_http.http_mcp_list_tools(url~, headers~, mode~) catch {
     error => return mcp_http_error_result(server_name, error)
   }
   info_tools_result(server_name, tools, tool, filter_server~)

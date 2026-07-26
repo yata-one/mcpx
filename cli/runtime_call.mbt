@@ -20,7 +20,11 @@ async fn run_call(
         Err(message) => return error_result(message)
       }
       match resolved_server.transport {
-        @config.ServerTransport::Stdio =>
+        @config.ServerTransport::Stdio => {
+          match unsupported_stdio_protocol_mode(resolved_server) {
+            Some(message) => return error_result(message)
+            None => ()
+          }
           if is_keep_alive_server(resolved_server) {
             run_call_daemon(
               command,
@@ -32,6 +36,7 @@ async fn run_call(
           } else {
             run_call_stdio(command, resolved_server, stdin_json~)
           }
+        }
         @config.ServerTransport::Http =>
           match resolved_server.url {
             None => error_result("server has no url: " + command.server)
@@ -60,6 +65,7 @@ async fn run_call(
                 headers~,
                 tool_name=command.tool,
                 arguments~,
+                mode=@config.effective_connection_mode(resolved_server),
               )
             }
           }
@@ -198,12 +204,14 @@ async fn run_call_json(
   headers~ : Map[String, String],
   tool_name~ : String,
   arguments~ : Json,
+  mode? : @config.McpConnectionMode = @config.McpConnectionMode::Auto,
 ) -> String {
   let result = @mcp_http.http_mcp_call_tool(
     url~,
     headers~,
     tool_name~,
     arguments~,
+    mode~,
   ) catch {
     error => return mcp_http_error_result(server_name, error)
   }
